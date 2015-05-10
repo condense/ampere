@@ -1,23 +1,20 @@
 (ns ampere.undo
-  (:require-macros [reagent.ratom  :refer [reaction]])
-  (:require
-   [tailrecursion.javelin :refer [cell] :refer-macros [cell=]]
-   [ampere.utils      :refer  [warn]]
-   [ampere.db         :refer  [app-db]]
-   [ampere.handlers   :as     handlers]
-   [ampere.subs       :as     subs]))
+  (:require [tailrecursion.javelin :refer [cell] :refer-macros [cell=]]
+            [ampere.utils :refer [warn]]
+            [ampere.db :refer [app-db]]
+            [ampere.handlers :as handlers]))
 
 ;; -- History -------------------------------------------------------------------------------------
 ;;
 ;;
-(def ^:private max-undos (atom 50))     ;; maximum number of undo states maintained
+(def ^:private max-undos "maximum number of undo states maintained" (atom 50))
 (defn set-max-undos!
   [n]
   (reset! max-undos n))
 
 
-(def ^:private undo-list (cell []))   ;; a list of history states
-(def ^:private redo-list (cell []))   ;; a list of future states, caused by undoing
+(def ^:private undo-list "a list of history states" (cell []))
+(def ^:private redo-list "a list of future states, caused by undoing" (cell []))
 
 ;; -- Explainations -----------------------------------------------------------
 ;;
@@ -25,9 +22,9 @@
 ;;
 ;; Seems really ugly to have mirrored vectors, but ...
 ;; the code kinda falls out when you do. I'm feeling lazy.
-(def ^:private app-explain (cell ""))         ;; mirrors app-db
-(def ^:private undo-explain-list (cell []))   ;; mirrors undo-list
-(def ^:private redo-explain-list (cell []))   ;; mirrors redo-list
+(def ^:private app-explain "mirrors app-db" (cell ""))
+(def ^:private undo-explain-list "mirrors undo-list" (cell []))
+(def ^:private redo-explain-list "mirrors redo-list" (cell []))
 
 (defn- clear-undos!
   []
@@ -61,51 +58,15 @@
   (reset! app-explain explanation))
 
 
-(defn undos?
-  []
-  (pos? (count @undo-list)))
+(def undos? (cell= (pos? (count undo-list))))
+(def redos? (cell= (pos? (count redo-list))))
 
-(defn redos?
-  []
-  (pos? (count @redo-list)))
-
-(defn undo-explanations
+(def undo-explanations
   "return list of undo descriptions or empty list if no undos"
-  []
-  (if (undos?)
-    (conj @undo-explain-list @app-explain)
-    []))
-
-;; -- subscriptions  -----------------------------------------------------------------------------
-
-(subs/register
- :undos?
- (fn handler
-    ; "return true if anything is stored in the undo list, otherwise false"
-   [_ _]
-   (cell= (undos?))))
-
-(subs/register
- :redos?
- (fn handler
-    ; "return true if anything is stored in the redo list, otherwise false"
-   [_ _]
-   (cell= (redos?))))
-
-
-(subs/register
- :undo-explanations
- (fn handler
-    ; "return a vector of string explanations ordered oldest to most recent"
-   [_ _]
-   (cell= (undo-explanations))))
-
-(subs/register
- :redo-explanations
- (fn handler
-    ; "returns a vector of string explanations ordered from most recent undo onward"
-   [_ _]
-   (cell= (deref redo-explain-list))))
+  (cell
+   (if (undos?)
+     (conj undo-explain-list app-explain)
+     [])))
 
 ;; -- event handlers  ----------------------------------------------------------------------------
 
@@ -126,8 +87,8 @@
     (undo undo-explain-list app-explain redo-explain-list)
     (recur (dec n))))
 
-(handlers/register-base     ;; not a pure handler
- :undo                     ;; usage:  (dispatch [:undo n])  n is optional, defaults to 1
+(handlers/register-base                                     ;; not a pure handler
+ :undo                                                     ;; usage:  (dispatch [:undo n])  n is optional, defaults to 1
  (fn handler
    [_ [_ n]]
    (if-not (undos?)
@@ -138,7 +99,7 @@
 (defn- redo
   [undos cur redos]
   (let [u (conj @undos @cur)
-        r  @redos]
+        r @redos]
     (reset! cur (first r))
     (reset! redos (rest r))
     (reset! undos u)))
@@ -151,17 +112,17 @@
     (redo undo-explain-list app-explain redo-explain-list)
     (recur (dec n))))
 
-(handlers/register-base     ;; not a pure handler
- :redo                     ;; usage:  (dispatch [:redo n])
- (fn handler               ;; if n absent, defaults to 1
+(handlers/register-base                                     ;; not a pure handler
+ :redo                                                     ;; usage:  (dispatch [:redo n])
+ (fn handler                                               ;; if n absent, defaults to 1
    [_ [_ n]]
    (if-not (redos?)
      (warn "re-frame: you did a (dispatch [:redo]), but there is nothing to redo.")
      (redo-n (or n 1)))))
 
 
-(handlers/register-base     ;; not a pure handler
- :purge-redos              ;; usage:  (dispatch [:purge-redo])
+(handlers/register-base                                     ;; not a pure handler
+ :purge-redos                                              ;; usage:  (dispatch [:purge-redo])
  (fn handler
    [_ _]
    (if-not (redos?)

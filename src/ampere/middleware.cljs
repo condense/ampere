@@ -1,9 +1,9 @@
 (ns ampere.middleware
   (:require
    [tailrecursion.javelin :refer [cell?]]
-   [ampere.undo  :refer [store-now!]]
+   [ampere.undo :refer [store-now!]]
    [ampere.utils :refer [warn log group groupEnd error]]
-   [clojure.data   :as data]))
+   [clojure.data :as data]))
 
 ;; See docs in the Wiki: https://github.com/Day8/re-frame/wiki
 
@@ -26,9 +26,9 @@
         (if (map? app-db)
           (warn "re-frame: Looks like \"pure\" is in the middleware pipeline twice. Ignoring.")
           (warn "re-frame: \"pure\" middleware not given a Ratom.  Got: " app-db))
-        handler)    ;; turn this into a noop handler
-      (let [db      @app-db
-            new-db  (handler db event-vec)]
+        handler)                                            ;; turn this into a noop handler
+      (let [db @app-db
+            new-db (handler db event-vec)]
         (if (nil? new-db)
           (error "re-frame: your pure handler returned nil. It should return the new db state.")
           (if-not (identical? db new-db)
@@ -50,7 +50,7 @@
     (warn "re-frame: use of \"log-ex\" is deprecated. You don't need it any more. Chrome seems to now produce good stack traces.")
     (try
       (handler db v)
-      (catch :default e     ;; ooops, handler threw
+      (catch :default e                                     ;; ooops, handler threw
         (do
           (.error js/console (.-stack e))
           (throw e))))))
@@ -63,10 +63,10 @@
   [handler]
   (fn debug-handler
     [db v]
-    (log  "-- New Event ----------------------------------------------------")
+    (log "-- New Event ----------------------------------------------------")
     (group "re-frame event: " v)
-    (let [new-db  (handler db v)
-          diff    (data/diff db new-db)]
+    (let [new-db (handler db v)
+          diff (data/diff db new-db)]
       (log "only before: " (first diff))
       (log "only after : " (second diff))
       (groupEnd)
@@ -99,11 +99,11 @@
      (path [:some :path] [:to] :here)
   "
   [& args]
-  (let [path   (flatten args)
-        _      (if (empty? path)
-                 (error "re-frame: \"path\" middleware given no params."))
-        _      (if (fn? (first args))
-                 (error "re-frame: you've used \"path\" incorrectly. It is a middleare factory and must be called like this \"(path something)\", whereas you just supplied \"path\"."))]
+  (let [path (flatten args)
+        _ (if (empty? path)
+            (error "re-frame: \"path\" middleware given no params."))
+        _ (if (fn? (first args))
+            (error "re-frame: you've used \"path\" incorrectly. It is a middleare factory and must be called like this \"(path something)\", whereas you just supplied \"path\"."))]
     (fn path-middleware
       [handler]
       (fn path-handler
@@ -123,9 +123,9 @@
     (fn undoable-handler
       [db event-vec]
       (let [explanation (cond
-                          (fn? explanation)     (explanation db event-vec)
+                          (fn? explanation) (explanation db event-vec)
                           (string? explanation) explanation
-                          (nil? explanation)    ""
+                          (nil? explanation) ""
                           :else (error "re-frame: \"undoable\" middleware given a bad parameter. Got: " explanation))]
         (store-now! explanation)
         (handler db event-vec)))))
@@ -171,7 +171,7 @@
     (fn after-handler
       [db v]
       (let [new-db (handler db v)]
-        (f new-db v)   ;; call f for side effects
+        (f new-db v)                                        ;; call f for side effects
         new-db))))
 
 
@@ -203,8 +203,8 @@
             new-db (handler db v)
 
             ;; work out if any "inputs" have changed
-            new-ins      (map #(get-in new-db %) in-paths)
-            old-ins      (map #(get-in db %) in-paths)
+            new-ins (map #(get-in new-db %) in-paths)
+            old-ins (map #(get-in db %) in-paths)
             changed-ins? (some false? (map identical? new-ins old-ins))]
 
         ;; if one of the inputs has changed, then run 'f'

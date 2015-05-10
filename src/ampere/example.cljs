@@ -5,21 +5,18 @@
 
 (enable-console-print!)
 
-(defonce app-state (atom {:text "Hello world!"}))
+;;; Ampere does not use subscriptions, because Javelin cells + CLJS namespacing
+;;; fully cover their functionality.
+;;; Formulas below usually reside in their own namespace and plays role of
+;;; subscriptions.
 
-(defonce x (cell 0))
-(defonce y (cell= (if (> 2 x) x -1)))
-(defonce z (cell= (print y)))
 
+;;;
 (om/root
- (fn [data owner]
-   (reify om/IRender
-     (render [_]
-       (html [:div (str @x) " " (str @y) [:button {:on-click #(swap! x inc)} "Inc"]]))))
- app-state
+ #(om/component (html [:div "OK"])) {}
  {:target (. js/document (getElementById "app"))})
 
-
+;;; Aux
 
 (defn on-js-reload []
   ;; optionally touch your app-state to force rerendering depending on

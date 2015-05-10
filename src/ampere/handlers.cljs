@@ -1,6 +1,6 @@
 (ns ampere.handlers
-  (:require [ampere.db         :refer [app-db]]
-            [ampere.utils      :refer [first-in-vector warn error]]))
+  (:require [ampere.db :refer [app-db]]
+            [ampere.utils :refer [first-in-vector warn error]]))
 
 ;; -- composing middleware  -----------------------------------------------------------------------
 
@@ -13,18 +13,18 @@
   "
   [v]
   (cond
-    (fn? v)       v  ;; assumed to be existing middleware
-    (vector? v)   (let [v (remove nil? (flatten v))]
-                    (cond
-                      (empty? v)       identity     ;; no-op middleware
-                      (= 1 (count v))  (first v)    ;; only one middleware, no composing needed
-                      :else            (apply comp v)))
-    :else         (warn "re-frame: comp-middleware expects a vector, got: " v)))
+    (fn? v) v                                               ;; assumed to be existing middleware
+    (vector? v) (let [v (remove nil? (flatten v))]
+                  (cond
+                    (empty? v) identity                     ;; no-op middleware
+                    (= 1 (count v)) (first v)               ;; only one middleware, no composing needed
+                    :else (apply comp v)))
+    :else (warn "re-frame: comp-middleware expects a vector, got: " v)))
 
 
 ;; -- the register of event handlers --------------------------------------------------------------
 
-(def ^:private id->fn  (atom {}))
+(def ^:private id->fn (atom {}))
 
 
 (defn lookup-handler
@@ -44,12 +44,12 @@
   generally be used."
   ([event-id handler-fn]
    (when (contains? @id->fn event-id)
-     (warn "re-frame: overwriting an event-handler for: " event-id))   ;; allow it, but warn.
+     (warn "re-frame: overwriting an event-handler for: " event-id)) ;; allow it, but warn.
    (swap! id->fn assoc event-id handler-fn))
 
   ([event-id middleware handler-fn]
-   (let  [mid-ware    (comp-middleware middleware)   ;; compose the middleware
-          midware+hfn (mid-ware handler-fn)]         ;; wrap the handler in the middleware
+   (let [mid-ware (comp-middleware middleware)              ;; compose the middleware
+         midware+hfn (mid-ware handler-fn)]                 ;; wrap the handler in the middleware
      (register-base event-id midware+hfn))))
 
 
@@ -57,7 +57,7 @@
 
 ;; -- lookup and call -----------------------------------------------------------------------------
 
-(def ^:dynamic *handling* nil)    ;; remember what event we are currently handling
+(def ^:dynamic *handling* nil)                              ;; remember what event we are currently handling
 
 
 (defn handle
@@ -69,12 +69,12 @@
   The handler is assumed to side-effect on `app-db` - the return value is ignored.
   To write a pure handler, use the \"pure\" middleware when registering the handler."
   [event-v]
-  (let [event-id    (first-in-vector event-v)
-        handler-fn  (lookup-handler event-id)]
+  (let [event-id (first-in-vector event-v)
+        handler-fn (lookup-handler event-id)]
     (if (nil? handler-fn)
       (error "re-frame: no event handler registered for: \"" event-id "\". Ignoring.")
-      (if  *handling*
-        (error "re-frame: while handling \""  *handling*  "\"  dispatch-sync was called for \"" event-v "\". You can't call dispatch-sync in an event handler.")
-        (binding [*handling*  event-v]
+      (if *handling*
+        (error "re-frame: while handling \"" *handling* "\"  dispatch-sync was called for \"" event-v "\". You can't call dispatch-sync in an event handler.")
+        (binding [*handling* event-v]
           (handler-fn app-db event-v))))))
 
