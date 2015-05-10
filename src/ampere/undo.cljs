@@ -1,5 +1,6 @@
 (ns ampere.undo
-  (:require [tailrecursion.javelin :refer [cell] :refer-macros [cell=]]
+  (:refer-clojure :exclude [dosync])
+  (:require [tailrecursion.javelin :refer [cell] :refer-macros [cell= dosync]]
             [ampere.utils :refer [warn]]
             [ampere.db :refer [app-db]]
             [ampere.handlers :as handlers]))
@@ -28,34 +29,38 @@
 
 (defn- clear-undos!
   []
-  (reset! undo-list [])
-  (reset! undo-explain-list []))
+  (dosync
+    (reset! undo-list [])
+    (reset! undo-explain-list [])))
 
 
 (defn- clear-redos!
   []
-  (reset! redo-list [])
-  (reset! redo-explain-list []))
+  (dosync
+    (reset! redo-list [])
+    (reset! redo-explain-list [])))
 
 
 (defn clear-history!
   []
-  (clear-undos!)
-  (clear-redos!)
-  (reset! app-explain ""))
+  (dosync
+    (clear-undos!)
+    (clear-redos!)
+    (reset! app-explain "")))
 
 
 (defn store-now!
   "stores the value currently in app-db, so the user can later undo"
   [explanation]
   (clear-redos!)
-  (reset! undo-list (vec (take
-                          @max-undos
-                          (conj @undo-list @app-db))))
-  (reset! undo-explain-list (vec (take
-                                  @max-undos
-                                  (conj @undo-explain-list @app-explain))))
-  (reset! app-explain explanation))
+  (dosync
+    (reset! undo-list (vec (take
+                             @max-undos
+                             (conj @undo-list @app-db))))
+    (reset! undo-explain-list (vec (take
+                                     @max-undos
+                                     (conj @undo-explain-list @app-explain))))
+    (reset! app-explain explanation)))
 
 
 (def undos? (cell= (pos? (count undo-list))))
@@ -63,8 +68,8 @@
 
 (def undo-explanations
   "return list of undo descriptions or empty list if no undos"
-  (cell
-   (if (undos?)
+  (cell=
+   (if undos?
      (conj undo-explain-list app-explain)
      [])))
 
@@ -73,44 +78,48 @@
 
 (defn- undo
   [undos cur redos]
-  (let [u @undos
-        r (cons @cur @redos)]
-    (reset! cur (last u))
-    (reset! redos r)
-    (reset! undos (pop u))))
+  (dosync
+    (let [u @undos
+          r (cons @cur @redos)]
+      (reset! cur (last u))
+      (reset! redos r)
+      (reset! undos (pop u)))))
 
 (defn- undo-n
   "undo until we reach n or run out of undos"
   [n]
-  (when (and (pos? n) (undos?))
-    (undo undo-list app-db redo-list)
-    (undo undo-explain-list app-explain redo-explain-list)
-    (recur (dec n))))
+  (dosync
+    (when (and (pos? n) undos?)
+      (undo undo-list app-db redo-list)
+      (undo undo-explain-list app-explain redo-explain-list)
+      (recur (dec n)))))
 
 (handlers/register-base                                     ;; not a pure handler
  :undo                                                     ;; usage:  (dispatch [:undo n])  n is optional, defaults to 1
  (fn handler
    [_ [_ n]]
-   (if-not (undos?)
+   (if-not undos?
      (warn "re-frame: you did a (dispatch [:undo]), but there is nothing to undo.")
      (undo-n (or n 1)))))
 
 
 (defn- redo
   [undos cur redos]
-  (let [u (conj @undos @cur)
-        r @redos]
-    (reset! cur (first r))
-    (reset! redos (rest r))
-    (reset! undos u)))
+  (dosync
+    (let [u (conj @undos @cur)
+          r @redos]
+      (reset! cur (first r))
+      (reset! redos (rest r))
+      (reset! undos u))))
 
 (defn- redo-n
   "redo until we reach n or run out of redos"
   [n]
-  (when (and (pos? n) (redos?))
-    (redo undo-list app-db redo-list)
-    (redo undo-explain-list app-explain redo-explain-list)
-    (recur (dec n))))
+  (dosync
+    (when (and (pos? n) (redos?))
+      (redo undo-list app-db redo-list)
+      (redo undo-explain-list app-explain redo-explain-list)
+      (recur (dec n)))))
 
 (handlers/register-base                                     ;; not a pure handler
  :redo                                                     ;; usage:  (dispatch [:redo n])
