@@ -30,23 +30,23 @@
 (defn- clear-undos!
   []
   (dosync
-    (reset! undo-list [])
-    (reset! undo-explain-list [])))
+   (reset! undo-list [])
+   (reset! undo-explain-list [])))
 
 
 (defn- clear-redos!
   []
   (dosync
-    (reset! redo-list [])
-    (reset! redo-explain-list [])))
+   (reset! redo-list [])
+   (reset! redo-explain-list [])))
 
 
 (defn clear-history!
   []
   (dosync
-    (clear-undos!)
-    (clear-redos!)
-    (reset! app-explain "")))
+   (clear-undos!)
+   (clear-redos!)
+   (reset! app-explain "")))
 
 
 (defn store-now!
@@ -54,13 +54,13 @@
   [explanation]
   (clear-redos!)
   (dosync
-    (reset! undo-list (vec (take
-                             @max-undos
-                             (conj @undo-list @app-db))))
-    (reset! undo-explain-list (vec (take
-                                     @max-undos
-                                     (conj @undo-explain-list @app-explain))))
-    (reset! app-explain explanation)))
+   (reset! undo-list (vec (take
+                           @max-undos
+                           (conj @undo-list @app-db))))
+   (reset! undo-explain-list (vec (take
+                                   @max-undos
+                                   (conj @undo-explain-list @app-explain))))
+   (reset! app-explain explanation)))
 
 
 (def undos? (cell= (pos? (count undo-list))))
@@ -79,20 +79,20 @@
 (defn- undo
   [undos cur redos]
   (dosync
-    (let [u @undos
-          r (cons @cur @redos)]
-      (reset! cur (last u))
-      (reset! redos r)
-      (reset! undos (pop u)))))
+   (let [u @undos
+         r (cons @cur @redos)]
+     (reset! cur (last u))
+     (reset! redos r)
+     (reset! undos (pop u)))))
 
 (defn- undo-n
   "undo until we reach n or run out of undos"
   [n]
   (dosync
-    (when (and (pos? n) undos?)
-      (undo undo-list app-db redo-list)
-      (undo undo-explain-list app-explain redo-explain-list)
-      (recur (dec n)))))
+   (when (and (pos? n) undos?)
+     (undo undo-list app-db redo-list)
+     (undo undo-explain-list app-explain redo-explain-list)
+     (recur (dec n)))))
 
 (handlers/register-base                                     ;; not a pure handler
  :undo                                                     ;; usage:  (dispatch [:undo n])  n is optional, defaults to 1
@@ -106,20 +106,20 @@
 (defn- redo
   [undos cur redos]
   (dosync
-    (let [u (conj @undos @cur)
-          r @redos]
-      (reset! cur (first r))
-      (reset! redos (rest r))
-      (reset! undos u))))
+   (let [u (conj @undos @cur)
+         r @redos]
+     (reset! cur (first r))
+     (reset! redos (rest r))
+     (reset! undos u))))
 
 (defn- redo-n
   "redo until we reach n or run out of redos"
   [n]
   (dosync
-    (when (and (pos? n) (redos?))
-      (redo undo-list app-db redo-list)
-      (redo undo-explain-list app-explain redo-explain-list)
-      (recur (dec n)))))
+   (when (and (pos? n) (redos?))
+     (redo undo-list app-db redo-list)
+     (redo undo-explain-list app-explain redo-explain-list)
+     (recur (dec n)))))
 
 (handlers/register-base                                     ;; not a pure handler
  :redo                                                     ;; usage:  (dispatch [:redo n])
