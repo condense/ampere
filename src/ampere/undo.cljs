@@ -88,11 +88,10 @@
 (defn- undo-n
   "undo until we reach n or run out of undos"
   [n]
-  (dosync
-   (when (and (pos? n) undos?)
-     (undo undo-list app-db redo-list)
-     (undo undo-explain-list app-explain redo-explain-list)
-     (recur (dec n)))))
+  (when (and (pos? n) undos?)
+    (undo undo-list app-db redo-list)
+    (undo undo-explain-list app-explain redo-explain-list)
+    (recur (dec n))))
 
 (handlers/register-base                                     ;; not a pure handler
  :undo                                                     ;; usage:  (dispatch [:undo n])  n is optional, defaults to 1
@@ -115,11 +114,10 @@
 (defn- redo-n
   "redo until we reach n or run out of redos"
   [n]
-  (dosync
-   (when (and (pos? n) (redos?))
-     (redo undo-list app-db redo-list)
-     (redo undo-explain-list app-explain redo-explain-list)
-     (recur (dec n)))))
+  (when (and (pos? n) (redos?))
+    (redo undo-list app-db redo-list)
+    (redo undo-explain-list app-explain redo-explain-list)
+    (recur (dec n))))
 
 (handlers/register-base                                     ;; not a pure handler
  :redo                                                     ;; usage:  (dispatch [:redo n])
