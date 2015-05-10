@@ -5,32 +5,32 @@
    [ampere.utils :refer [warn log group groupEnd error]]
    [clojure.data :as data]))
 
-;; See docs in the Wiki: https://github.com/Day8/re-frame/wiki
+;; See docs in the Wiki: https://github.com/Day8/ampere/wiki
 
 
 (defn pure
   "Acts as an adaptor, allowing handlers to be writen as pure functions.
-  The re-frame router passes the `app-db` atom as the first parameter to any handler.
+  The ampere router passes the `app-db` atom as the first parameter to any handler.
   This middleware adapts that atom to be the value within the atom.
   If you strip away the error/efficiency checks, this middleware is doing:
      (reset! app-db (handler @app-db event-vec))
   You don't have to use this middleware directly. It is automatically applied to
   your handler's middleware when you use \"register-handler\".
   In fact, the only way to by-pass automatic use of \"pure\" in your middleware
-  is to use the low level registration function \"re-frame.handlers/register-handler-base\""
+  is to use the low level registration function \"ampere.handlers/register-handler-base\""
   [handler]
   (fn pure-handler
     [app-db event-vec]
     (if (not (cell? app-db))
       (do
         (if (map? app-db)
-          (warn "re-frame: Looks like \"pure\" is in the middleware pipeline twice. Ignoring.")
-          (warn "re-frame: \"pure\" middleware not given a Ratom.  Got: " app-db))
+          (warn "ampere: Looks like \"pure\" is in the middleware pipeline twice. Ignoring.")
+          (warn "ampere: \"pure\" middleware not given a Ratom.  Got: " app-db))
         handler)                                            ;; turn this into a noop handler
       (let [db @app-db
             new-db (handler db event-vec)]
         (if (nil? new-db)
-          (error "re-frame: your pure handler returned nil. It should return the new db state.")
+          (error "ampere: your pure handler returned nil. It should return the new db state.")
           (if-not (identical? db new-db)
             (reset! app-db new-db)))))))
 
@@ -47,7 +47,7 @@
   [handler]
   (fn log-ex-handler
     [db v]
-    (warn "re-frame: use of \"log-ex\" is deprecated. You don't need it any more. Chrome seems to now produce good stack traces.")
+    (warn "ampere: use of \"log-ex\" is deprecated. You don't need it any more. Chrome seems to now produce good stack traces.")
     (try
       (handler db v)
       (catch :default e                                     ;; ooops, handler threw
@@ -64,7 +64,7 @@
   (fn debug-handler
     [db v]
     (log "-- New Event ----------------------------------------------------")
-    (group "re-frame event: " v)
+    (group "ampere event: " v)
     (let [new-db (handler db v)
           diff (data/diff db new-db)]
       (log "only before: " (first diff))
@@ -101,9 +101,9 @@
   [& args]
   (let [path (flatten args)
         _ (if (empty? path)
-            (error "re-frame: \"path\" middleware given no params."))
+            (error "ampere: \"path\" middleware given no params."))
         _ (if (fn? (first args))
-            (error "re-frame: you've used \"path\" incorrectly. It is a middleare factory and must be called like this \"(path something)\", whereas you just supplied \"path\"."))]
+            (error "ampere: you've used \"path\" incorrectly. It is a middleare factory and must be called like this \"(path something)\", whereas you just supplied \"path\"."))]
     (fn path-middleware
       [handler]
       (fn path-handler
@@ -126,7 +126,7 @@
                           (fn? explanation) (explanation db event-vec)
                           (string? explanation) explanation
                           (nil? explanation) ""
-                          :else (error "re-frame: \"undoable\" middleware given a bad parameter. Got: " explanation))]
+                          :else (error "ampere: \"undoable\" middleware given a bad parameter. Got: " explanation))]
         (store-now! explanation)
         (handler db event-vec)))))
 

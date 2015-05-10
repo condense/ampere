@@ -99,7 +99,7 @@
  (fn handler
    [_ [_ n]]
    (if-not undos?
-     (warn "re-frame: you did a (dispatch [:undo]), but there is nothing to undo.")
+     (warn "ampere: you did a (dispatch [:undo]), but there is nothing to undo.")
      (undo-n (or n 1)))))
 
 
@@ -126,7 +126,7 @@
  (fn handler                                               ;; if n absent, defaults to 1
    [_ [_ n]]
    (if-not (redos?)
-     (warn "re-frame: you did a (dispatch [:redo]), but there is nothing to redo.")
+     (warn "ampere: you did a (dispatch [:redo]), but there is nothing to redo.")
      (redo-n (or n 1)))))
 
 
@@ -135,5 +135,5 @@
  (fn handler
    [_ _]
    (if-not (redos?)
-     (warn "re-frame: you did a (dispatch [:purge-redos]), but there is nothing to redo.")
+     (warn "ampere: you did a (dispatch [:purge-redos]), but there is nothing to redo.")
      (clear-redos!))))

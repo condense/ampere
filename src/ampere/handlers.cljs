@@ -19,7 +19,7 @@
                     (empty? v) identity                     ;; no-op middleware
                     (= 1 (count v)) (first v)               ;; only one middleware, no composing needed
                     :else (apply comp v)))
-    :else (warn "re-frame: comp-middleware expects a vector, got: " v)))
+    :else (warn "ampere: comp-middleware expects a vector, got: " v)))
 
 
 ;; -- the register of event handlers --------------------------------------------------------------
@@ -40,11 +40,11 @@
 
 (defn register-base
   "register a handler for an event.
-  This is low level and it is expected that \"re-frame.core/register-handler\" would
+  This is low level and it is expected that \"ampere.core/register-handler\" would
   generally be used."
   ([event-id handler-fn]
    (when (contains? @id->fn event-id)
-     (warn "re-frame: overwriting an event-handler for: " event-id)) ;; allow it, but warn.
+     (warn "ampere: overwriting an event-handler for: " event-id)) ;; allow it, but warn.
    (swap! id->fn assoc event-id handler-fn))
 
   ([event-id middleware handler-fn]
@@ -72,9 +72,9 @@
   (let [event-id (first-in-vector event-v)
         handler-fn (lookup-handler event-id)]
     (if (nil? handler-fn)
-      (error "re-frame: no event handler registered for: \"" event-id "\". Ignoring.")
+      (error "ampere: no event handler registered for: \"" event-id "\". Ignoring.")
       (if *handling*
-        (error "re-frame: while handling \"" *handling* "\"  dispatch-sync was called for \"" event-v "\". You can't call dispatch-sync in an event handler.")
+        (error "ampere: while handling \"" *handling* "\"  dispatch-sync was called for \"" event-v "\". You can't call dispatch-sync in an event handler.")
         (binding [*handling* event-v]
           (handler-fn app-db event-v))))))
 

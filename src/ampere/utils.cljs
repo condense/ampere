@@ -3,7 +3,7 @@
 
 ;; -- Logging -----------------------------------------------------------------
 ;;
-;; re-frame internally uses a set of logging functions which, by default,
+;; ampere internally uses a set of logging functions which, by default,
 ;; print to js/console.
 ;; Use set-loggers! if you want to change this default behaviour.
 ;; In production environment, you may want to capture exceptions and POST
@@ -21,7 +21,7 @@
 (def loggers (atom default-loggers))
 
 (defn set-loggers!
-  "Change the set (subset?) of logging functions used by re-frame.
+  "Change the set (subset?) of logging functions used by ampere.
   'new-loggers' should be a map which looks like default-loggers"
   [new-loggers]
   (assert (empty? (difference (set (keys new-loggers)) (set (keys default-loggers)))) "Unknown keys in new-loggers")
@@ -40,4 +40,4 @@
   [v]
   (if (vector? v)
     (first v)
-    (error "re-frame: expected a vector event, but got: " v)))
+    (error "ampere: expected a vector event, but got: " v)))

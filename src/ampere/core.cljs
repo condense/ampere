@@ -25,7 +25,7 @@
 (def on-changes middleware/on-changes)
 
 ;; --  Logging -----
-;; re-frame uses the logging functions: warn, log, error, group and groupEnd
+;; ampere uses the logging functions: warn, log, error, group and groupEnd
 ;; By default, these functions map directly to the js/console implementations
 ;; But you can override with your own (set or subset):
 ;;   (set-loggers!  {:warn  my-warn   :log  my-looger ...})
