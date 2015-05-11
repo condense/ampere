@@ -1,9 +1,10 @@
 (ns ampere.db
   (:require [tailrecursion.javelin :refer [cell]]))
 
-;; -- Application State  --------------------------------------------------------------------------
-;;
-;; Should not be accessed directly by application code
-;; Read access goes through subscriptions.
-;; Updates via event handlers.
-(def app-db (cell {}))
+(def app-db
+  "## Application State
+   Should not be accessed directly by application code.
+   Read access goes through Javelin cells,
+   read-only root cell is available as `ampere.core/app-db`
+   Updates via event handlers."
+  (cell {}))

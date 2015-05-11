@@ -10,7 +10,8 @@
                  [org.clojure/core.match "0.3.0-alpha4"]
                  [sablono "0.3.4"]
                  [org.omcljs/om "0.8.8"]
-                 [tailrecursion/javelin "3.8.0"]]
+                 [tailrecursion/javelin "3.8.0"]
+                 [vfsm "0.1.0-SNAPSHOT"]]
 
   :plugins [[lein-cljsbuild "1.0.5"]
             [lein-figwheel "0.3.1"]]
@@ -21,17 +22,17 @@
   
   :cljsbuild {
     :builds [{:id "dev"
-              :source-paths ["src"]
+              :source-paths ["src" "examples"]
 
               :figwheel { :on-jsload "ampere.example/on-js-reload" }
 
-              :compiler {:main ampere.core
+              :compiler {:main ampere.example
                          :asset-path "js/compiled/out"
                          :output-to "resources/public/js/compiled/ampere.js"
                          :output-dir "resources/public/js/compiled/out"
                          :source-map-timestamp true }}
              {:id "min"
-              :source-paths ["src"]
+              :source-paths ["src" "examples"]
               :compiler {:output-to "resources/public/js/compiled/ampere.js"
                          :main ampere.example
                          :optimizations :advanced

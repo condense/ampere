@@ -107,7 +107,7 @@
 ;;; Note including :instrument and providing subscriptions in :opts
 (om/root ActionSelect {}
          {:target (. js/document (getElementById "app"))
-          :opts {:sub {:wrbulkaction wrbulkaction}}
+          :opts {:cells {:wrbulkaction wrbulkaction}}
           :instrument a/instrument})
 
 ;;; Aux
