@@ -3,6 +3,7 @@
    [tailrecursion.javelin :refer [cell?]]
    [ampere.undo :refer [store-now!]]
    [ampere.utils :refer [warn log group groupEnd error]]
+   [vfsm.core :as vfsm]
    [clojure.data :as data]))
 
 ;;; See docs in the [Wiki](https://github.com/Day8/re-frame/wiki)
@@ -165,3 +166,11 @@
       (let [new-db (handler db v)]
         (f new-db v)                                   ; call f for side effects
         new-db))))
+
+(defn vfsm [ctx]
+  (fn vfsm-middleware [spec]
+    (fn vfsm-handler [db v]
+      (-> db
+          (assoc :event v)
+          (vfsm/execute spec ctx)
+          (dissoc :event)))))

@@ -3,7 +3,8 @@
             [sablono.core :refer-macros [html]]
             [cljs.core.match :refer-macros [match]]
             [tailrecursion.javelin :refer [cell] :refer-macros [cell=]]
-            [ampere.core :as a]))
+            [ampere.core :as a]
+            [ampere.example-vfsm :refer [spec]]))
 
 (enable-console-print!)
 
@@ -19,51 +20,10 @@
 
 (def wrbulkaction (cell= (:wrbulkaction a/app-db)))
 
-;;; Event Handlers, FSMs should fit fine
-
-(defn index-wrbulkaction-fsm
-  "
-  State machine representing the interactions through selecting,
-  confirming and processing bulk actions from the Index page.
-  "
-  [{{:keys [state] :as current-state} :wrbulkaction :as db} [_ event data]]
-  (assoc db :wrbulkaction
-         (match [state event]
-           [_ :START] (do ; put any synchronous action right inside handler
-                        (print ::START!)
-                        {:state :closed})
-           [:closed :open] {:state :opened :modal :open}    ; or make pure state transform
-           [:opened :dismiss] {:state :closed :modal :closed}
-           [:opened :cancel] {:state :closed :modal :closed}
-           [:opened :save] (do
-                             ; and asynchronous actions performed by event emit
-                             ; put event emitting in any callback which should affect app
-                             (js/setTimeout
-                              #(a/dispatch [:wrbulkaction
-                                            (rand-nth [:success :error])
-                                            (rand-int 100)])
-                              1000)
-                             {:state   :loading
-                              :modal   :open})
-           [:loading :cancel] (do
-                                (print ::cancel-post)
-                                {:state :closed :modal :closed})
-           [:loading :success] (do
-                                 (print ::reset-form)
-                                 (print ::update-state data)
-                                 {:state   :closed
-                                  :modal   :closed})
-           [:loading :error] (do
-                               (a/dispatch [:show-errors data])
-                               {:state   :errors :modal :open
-                                :errors  data})
-           :else current-state)))
-
 ;;; Register handlers, after that call them in any part of app
 ;;; with (ampere.core/dispatch [:event-id params ...])
 
-(a/register-handler :wrbulkaction index-wrbulkaction-fsm)
-(a/register-handler :init (fn [db _] (a/dispatch [:wrbulkaction :START]) db))
+(a/register-handler :wrbulkaction [a/trim-v (a/path :wrbulkaction) (a/vfsm {})] spec)
 (a/register-handler :show-errors (fn [db [_ data]] (js/alert (str "Error: " data)) db))
 
 (defn ConfirmAction [_ _]
@@ -99,11 +59,11 @@
                          :on-cancel    #(fsm-step :cancel)
                          :on-dismiss   #(fsm-step :dismiss)
                          :ok-copy      "Ok"
-                         :loading      false}))]))))
+                         :loading      false}))
+            [:div [:pre (pr-str @a/app-db)]]]))))
 
 ;;; Run
 
-(a/dispatch [:init])
 ;;; Note including :instrument and providing subscriptions in :opts
 (om/root ActionSelect {}
          {:target (. js/document (getElementById "app"))

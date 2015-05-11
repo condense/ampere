@@ -24,6 +24,7 @@
 (def trim-v middleware/trim-v)
 (def after middleware/after)
 (def log-ex middleware/log-ex)
+(def vfsm middleware/vfsm)
 
 ;;; ## Logging
 ;;; Ampere uses the logging functions: warn, log, error, group and groupEnd
