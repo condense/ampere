@@ -43,11 +43,14 @@
 
 ;;
 
+(defn map-vals [f m]
+  (persistent! (reduce-kv (fn [z k v] (assoc! z k (f v))) (transient {}) m)))
+
 (defn Wrapper [[f cursor m] owner]
   (reify
     om/IInitState
     (init-state [_]
-      {::id (gensym)})
+      (assoc (map-vals deref (get-in m [:opts :sub])) ::id (gensym)))
     om/IWillMount
     (will-mount [_]
       (let [id (om/get-state owner ::id)
@@ -63,7 +66,9 @@
     (render-state [_ state]
       (om/build* f (merge cursor state) m))))
 
-(defn instrument [& args]
-  (om/build* Wrapper args))
+(defn instrument [f cursor m]
+  (if (get-in m [:opts :sub])
+    (om/build* Wrapper [f cursor m])
+    (om/build* f cursor m)))
 
 (def app-db "Read-only version of app-db." (cell= db/app-db))
