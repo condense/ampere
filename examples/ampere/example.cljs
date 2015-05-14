@@ -4,6 +4,7 @@
             [cljs.core.match :refer-macros [match]]
             [tailrecursion.javelin :refer [cell] :refer-macros [cell=]]
             [ampere.core :as a]
+            [ampere.adapters.om :as ao]
             [ampere.example-vfsm :refer [spec]]))
 
 (enable-console-print!)
@@ -68,7 +69,7 @@
 (om/root ActionSelect {}
          {:target (. js/document (getElementById "app"))
           :opts {:cells {:wrbulkaction wrbulkaction}}
-          :instrument a/instrument})
+          :instrument ao/instrument})
 
 ;;; Aux
 (defn on-js-reload []
