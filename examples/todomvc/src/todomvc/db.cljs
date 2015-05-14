@@ -11,7 +11,7 @@
 
 ;; -- Local Storage  ----------------------------------------------------------
 
-(def lsk "todos-reframe")     ;; local store key
+(def lsk "todos-ampere")     ;; local store key
 
 (defn ls->todos
   "Read in todos from LS, and process into a form we can merge into app-db."
