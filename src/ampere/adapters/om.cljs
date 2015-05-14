@@ -29,10 +29,11 @@
     (render-state [_ state]
       (om/build* f (merge cursor state) m))))
 
-(defn instrument [f cursor m]
+(defn instrument
   "Add this as `:instrument` in `om/root` options to enable components having
   `:cells` in their `:opts` to observe & merge those cells into props.
   It resembles `re-frame/subscribe`"
+  [f cursor m]
   (if (get-in m [:opts :cells])
     (om/build* Wrapper [f cursor m])
     (om/build* f cursor m)))

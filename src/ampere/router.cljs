@@ -23,18 +23,21 @@
         (recur))))
 
 ;;; ## Router loop
-;;;
-;;; In a perpetual loop, read events from "event-chan", and call the right handler.
-;;;
-;;; Because handlers occupy the CPU, before each event is handled, hand
-;;; back control to the browser, via a (<! (timeout 0)) call.
-;;;
-;;; In some cases, we need to pause for an entire animationFrame, to ensure that
-;;; the DOM is fully flushed, before then calling a handler known to hog the CPU
-;;; for an extended period.  In such a case, the event should be laballed with metadata
-;;; Example usage (notice the ":flush-dom" metadata):
-;;;   (dispatch ^:flush-dom  [:event-id other params])
+
 (defn router-loop
+  "In a perpetual loop, read events from `event-chan`, and call the right handler.
+
+   Because handlers occupy the CPU, before each event is handled, hand
+   back control to the browser, via a `(<! (timeout 0))` call.
+
+   In some cases, we need to pause for an entire animationFrame, to ensure that
+   the DOM is fully flushed, before then calling a handler known to hog the CPU
+   for an extended period.  In such a case, the event should be labeled with metadata.
+
+   Example usage (notice the `:flush-dom` metadata):
+
+       (dispatch ^:flush-dom  [:event-id other params])
+   "
   []
   (go-loop []
     (let [event-v (<! event-chan)                           ; wait for an event
@@ -59,7 +62,7 @@
             (throw e)))))                                   ; re-throw so the rest of the app's infrastructure (window.onerror?) gets told
     (recur)))
 
-;;; start event processing
+;;; Start event processing.
 (router-loop)
 
 ;;; ## Dispatch
@@ -85,6 +88,3 @@
   [event-v]
   (handle event-v)
   nil)
-
-
-
