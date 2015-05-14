@@ -1,6 +1,7 @@
 (ns ampere.adapters.om
   "Om-specific API"
   (:require [om.core :as om :include-macros true]
+            [ampere.router :as router]
             [ampere.utils :as utils]))
 
 (defn- Wrapper
@@ -35,3 +36,6 @@
   (if (get-in m [:opts :cells])
     (om/build* Wrapper [f cursor m])
     (om/build* f cursor m)))
+
+(defn init! []
+  (set! router/*flush-dom* om/render-all))

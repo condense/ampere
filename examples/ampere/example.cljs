@@ -49,7 +49,8 @@
 ;;; :wrbulkaction comes from subscription in :opts
 (defn ActionSelect [{{:keys [modal]} :wrbulkaction} owner]
   (om/component
-   (let [fsm-step #(a/dispatch [:wrbulkaction %])]
+    ;; flush-dom meta is not necessary here, example gratia only
+   (let [fsm-step #(a/dispatch ^:flush-dom [:wrbulkaction %])]
      (html [:div
             [:button {:on-click #(fsm-step :open)} "Go"]
             (if (= modal :open)
@@ -65,6 +66,7 @@
 
 ;;; Run
 
+(ao/init!)
 ;;; Note including :instrument and providing subscriptions in :opts
 (om/root ActionSelect {}
          {:target (. js/document (getElementById "app"))

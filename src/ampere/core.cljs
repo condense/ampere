@@ -1,5 +1,5 @@
 (ns ampere.core
-  "Ampere API entry point. Re-export frequently used functions."
+  "Ampere API entry point. Re-export frequently used functions"
   (:require [tailrecursion.javelin :refer-macros [cell=]]
             [ampere.handlers :as handlers]
             [ampere.router :as router]

@@ -7,11 +7,12 @@
 
 ;;; ## History
 
-(def ^:private max-undos "maximum number of undo states maintained" (atom 50))
+(def ^:private max-undos "Maximum number of undo states maintained." (atom 50))
 (defn set-max-undos! [n] (reset! max-undos n))
 
-(def ^:private undo-list "a list of history states" (cell (list)))
-(def ^:private redo-list "a list of future states, caused by undoing" (cell (list)))
+(def ^:private undo-list "A list of history states." (cell (list)))
+(def ^:private redo-list "A list of future states, caused by undoing."
+  (cell (list)))
 
 (defn- clear-undos! [] (reset! undo-list (list)))
 (defn- clear-redos! [] (reset! redo-list (list)))
@@ -22,7 +23,7 @@
    (clear-redos!)))
 
 (defn store-now!
-  "stores the value currently in app-db, so the user can later undo"
+  "Stores the value currently in app-db, so the user can later undo."
   [explanation]
   (dosync
     (clear-redos!)
@@ -33,7 +34,7 @@
 (def redos? (cell= (pos? (count redo-list))))
 
 (def undo-explanations
-  "list of undo descriptions"
+  "List of undo descriptions."
   (cell= (map :explanation undo-list)))
 
 ;;; ## Event handlers
@@ -49,7 +50,7 @@
      (reset! app-db (-> u peek :db)))))
 
 (defn- dodo-n
-  "undo/redo until we reach n or run out of undos/redos"
+  "Undo/redo until we reach n or run out of undos/redos."
   [from to n]
   (when (and (pos? n) undos?)
     (dodo from to)
