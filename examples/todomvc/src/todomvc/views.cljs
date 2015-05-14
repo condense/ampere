@@ -1,96 +1,114 @@
 (ns todomvc.views
-  (:require [reagent.core  :as reagent :refer [atom]]
-            [re-frame.core :refer [subscribe dispatch]]))
+  (:require [sablono.core :refer-macros [html]]
+            [om.core :as om :include-macros true]
+            [ampere.core :refer [dispatch]]
+            [todomvc.subs :as subs]))
 
+;;; But Om replace Reagent on verbose and obscure way :-(
 
-(defn todo-input [{:keys [title on-save on-stop]}]
-  (let [val (atom title)
-        stop #(do (reset! val "")
-                  (if on-stop (on-stop)))
-        save #(let [v (-> @val str clojure.string/trim)]
-               (if-not (empty? v) (on-save v))
-               (stop))]
-    (fn [props]
-      [:input (merge props
-                     {:type "text"
-                      :value @val
-                      :on-blur save
-                      :on-change #(reset! val (-> % .-target .-value))
-                      :on-key-down #(case (.-which %)
-                                     13 (save)
-                                     27 (stop)
-                                     nil)})])))
+(defn todo-input [{:keys [title on-save on-stop] :as props} owner]
+  (reify
+    om/IInitState
+    (init-state [_] {:val title})
+    om/IRenderState
+    (render-state [_ {:keys [val]}]
+      (let [stop #(do (om/set-state! owner :val "")
+                      (if on-stop (on-stop)))
+            save #(let [v (-> val str clojure.string/trim)]
+                   (if-not (empty? v) (on-save v))
+                   (stop))]
+        (html [:input (merge props
+                             {:type        "text"
+                              :value       val
+                              :on-blur     save
+                              :on-change   #(om/set-state!
+                                             owner :val (-> % .-target .-value))
+                              :on-key-down #(case (.-which %)
+                                             13 (save)
+                                             27 (stop)
+                                             nil)})])))))
 
-(def todo-edit (with-meta todo-input
-                          {:component-did-mount #(.focus (reagent/dom-node %))}))
+(defn todo-edit [props owner]
+  (reify
+    om/IDidMount
+    (did-mount [_] (.focus (om/get-node owner)))
+    om/IRender
+    (render [_] (om/build todo-input props))))
 
-(defn stats-footer
-  []
-  (let [footer-stats (subscribe [:footer-stats])]
-    (fn []
-      (let [[active done filter] @footer-stats
+(defn stats-footer [{:keys [footer-stats]} owner]
+  (reify
+    om/IRender
+    (render [_]
+      (let [[active done filter] footer-stats
             props-for (fn [filter-kw txt]
                         [:a {:class (if (= filter-kw filter) "selected")
                              :href (str "#/" (name filter-kw))} txt])]
-        [:footer#footer
-         [:div
-          [:span#todo-count
-           [:strong active] " " (case active 1 "item" "items") " left"]
-          [:ul#filters
-           [:li (props-for :all "All")]
-           [:li (props-for :active "Active")]
-           [:li (props-for :done "Completed")]]
-          (when (pos? done)
-            [:button#clear-completed {:on-click #(dispatch [:clear-completed])}
-             "Clear completed " done])]]))))
+        (html
+          [:footer#footer
+           [:div
+            [:span#todo-count
+             [:strong active] " " (case active 1 "item" "items") " left"]
+            [:ul#filters
+             [:li (props-for :all "All")]
+             [:li (props-for :active "Active")]
+             [:li (props-for :done "Completed")]]
+            (when (pos? done)
+              [:button#clear-completed {:on-click #(dispatch [:clear-completed])}
+               "Clear completed " done])]])))))
 
-(defn todo-item
-  []
-  (let [editing (atom false)]
-    (fn [{:keys [id done title]}]
-      [:li {:class (str (if done "completed ")
-                        (if @editing "editing"))}
-       [:div.view
-        [:input.toggle {:type "checkbox"
-                        :checked done
-                        :on-change #(dispatch [:toggle-done id])}]
-        [:label {:on-double-click #(reset! editing true)} title]
-        [:button.destroy {:on-click #(dispatch [:delete-todo id])}]]
-       (when @editing
-         [todo-edit {:class "edit"
-                     :title title
-                     :on-save #(dispatch [:save id %])
-                     :on-stop #(reset! editing false)}])])))
+(defn todo-item [{:keys [id done title]} owner]
+  (reify
+    om/IRenderState
+    (render-state [_ {:keys [editing]}]
+      (html
+        [:li {:class (str (if done "completed ")
+                          (if editing "editing"))}
+         [:div.view
+          [:input.toggle {:type "checkbox"
+                          :checked done
+                          :on-change #(dispatch [:toggle-done id])}]
+          [:label {:on-double-click #(om/set-state! owner :editing true)} title]
+          [:button.destroy {:on-click #(dispatch [:delete-todo id])}]]
+         (when editing
+           (om/build todo-edit
+                     {:class   "edit"
+                      :title   title
+                      :on-save #(dispatch [:save id %])
+                      :on-stop #(om/set-state! owner :editing false)}))]))))
 
-(defn todo-list
-  [visible-todos]
-  [:ul#todo-list
-   (for [todo  @visible-todos]
-     ^{:key (:id todo)} [todo-item todo])])
+(defn todo-list [{:keys [visible-todos]} owner]
+  (reify
+    om/IRender
+    (render [_]
+      (html
+        [:ul#todo-list
+         (om/build-all todo-item visible-todos)]))))
 
-(defn todo-app
-  []
-  (let [todos           (subscribe [:todos])
-        visible-todos   (subscribe [:visible-todos])
-        completed-count (subscribe [:completed-count])]
-    (fn []
-      [:div
-       [:section#todoapp
-        [:header#header
-         [:h1 "todos"]
-         [todo-input {:id "new-todo"
-                      :placeholder "What needs to be done?"
-                      :on-save #(dispatch [:add-todo %])}]]
-        (when-not (empty? @todos)
-          [:div
-           [:section#main
-            [:input#toggle-all
-             {:type "checkbox"
-              :checked (pos? @completed-count)
-              :on-change #(dispatch [:complete-all-toggle])}]
-            [:label {:for "toggle-all"} "Mark all as complete"]
-            [todo-list visible-todos]]
-           [stats-footer]])]
-       [:footer#info
-        [:p "Double-click to edit a todo"]]])))
+(defn todo-app [{:keys [todos completed-count]} owner]
+  (reify
+    om/IRender
+    (render [_]
+      (html
+        [:div
+         [:section#todoapp
+          [:header#header
+           [:h1 "todos"]
+           (om/build
+             todo-input {:id          "new-todo"
+                         :placeholder "What needs to be done?"
+                         :on-save     #(dispatch [:add-todo %])})]
+          (when-not (empty? todos)
+            [:div
+             [:section#main
+              [:input#toggle-all
+               {:type "checkbox"
+                :checked (pos? completed-count)
+                :on-change #(dispatch [:complete-all-toggle])}]
+              [:label {:for "toggle-all"} "Mark all as complete"]
+              (om/build todo-list {}
+                        {:opts {:cells {:visible-todos subs/visible-todos}}})]
+             (om/build stats-footer {}
+                       {:opts {:cells {:footer-stats subs/footer-stats}}})])]
+         [:footer#info
+          [:p "Double-click to edit a todo"]]]))))
 

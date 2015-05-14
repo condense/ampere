@@ -1,11 +1,12 @@
 (ns todomvc.core
   (:require-macros [secretary.core :refer [defroute]])
   (:require [goog.events :as events]
-            [reagent.core :as reagent :refer [atom]]
-            [re-frame.core :refer [dispatch dispatch-sync]]
+            [om.core :as om :include-macros true]
+            [ampere.core :refer [dispatch dispatch-sync]]
+            [ampere.adapters.om :as adapter]
             [secretary.core :as secretary]
             [todomvc.handlers]
-            [todomvc.subs]
+            [todomvc.subs :as subs]
             [todomvc.views])
   (:import [goog History]
            [goog.history EventType]))
@@ -29,6 +30,12 @@
 
 (defn ^:export main
   []
+  (adapter/init!)
   (dispatch-sync [:initialise-db])
-  (reagent/render [todomvc.views/todo-app]
-                  (.getElementById js/document "app")))
+  (om/root todomvc.views/todo-app {}
+           {:target     (.getElementById js/document "app")
+            :instrument adapter/instrument
+            :opts {:cells {:todos subs/todos
+                           :completed-count subs/completed-count}}}))
+
+(main)

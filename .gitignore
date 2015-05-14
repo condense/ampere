@@ -12,6 +12,6 @@ target/
 .repl
 .nrepl-port
 *-init.clj
-/*.iml
+*.iml
 .lein-failures
-/.idea
+.idea/

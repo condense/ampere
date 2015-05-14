@@ -1,7 +1,7 @@
 (ns todomvc.handlers
   (:require
-    [todomvc.db    :refer [default-value ls->todos todos->ls!]]
-    [re-frame.core :refer [register-handler path trim-v after]]))
+    [todomvc.db  :refer [default-value ls->todos todos->ls!]]
+    [ampere.core :refer [register-handler path trim-v after]]))
 
 
 ;; -- Middleware --------------------------------------------------------------
