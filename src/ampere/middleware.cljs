@@ -25,7 +25,7 @@
       (do
         (if (map? app-db)
           (warn "ampere: Looks like \"pure\" is in the middleware pipeline twice. Ignoring.")
-          (warn "ampere: \"pure\" middleware not given a Ratom.  Got: " app-db))
+          (warn "ampere: \"pure\" middleware not given a Cell.  Got: " app-db))
         handler)                                 ; turn this into a noop handler
       (let [db @app-db
             new-db (handler db event-vec)]
