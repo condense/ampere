@@ -167,10 +167,13 @@
         (f new-db v)                                   ; call f for side effects
         new-db))))
 
-(defn vfsm [ctx]
-  (fn vfsm-middleware [spec]
-    (fn vfsm-handler [db v]
-      (-> db
-          (assoc :event v)
-          (vfsm/execute spec ctx)
-          (dissoc :event)))))
+(defn vfsm [ctx & [event-key]]
+  "Middleware factory which executes VFSM `spec` over db, temporarily setting
+   `event-key` (default is `:event`) to `v` to give VFSM access to event data."
+  (let [event-key (or event-key :event)]
+    (fn vfsm-middleware [spec]
+      (fn vfsm-handler [db v]
+        (-> db
+            (assoc event-key v)
+            (vfsm/execute spec ctx)
+            (dissoc event-key))))))
