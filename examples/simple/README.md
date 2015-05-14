@@ -35,7 +35,7 @@
 Please see [TodoMVC](https://github.com/ul/ampere/tree/master/examples/todomvc)
 example for more detailed walkthrough of Ampere basics.
 
-Interesting part of that example is using VFSM for implementing handler control logic.
+Interesting part of this simple example is using VFSM for implementing handler control logic.
 Open `resources/example.graphml` with [yEd](http://www.yworks.com/en/products/yfiles/yed/)
 and enjoy how simply is logic defined, and how easy to spot flaws in logic on picture:
 ERROR node has no transitions from it, machine got stuck on error.
