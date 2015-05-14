@@ -167,9 +167,10 @@
         (f new-db v)                                   ; call f for side effects
         new-db))))
 
-(defn vfsm [ctx & [event-key]]
+(defn vfsm
   "Middleware factory which executes VFSM `spec` over db, temporarily setting
    `event-key` (default is `:event`) to `v` to give VFSM access to event data."
+  [ctx & [event-key]]
   (let [event-key (or event-key :event)]
     (fn vfsm-middleware [spec]
       (fn vfsm-handler [db v]
