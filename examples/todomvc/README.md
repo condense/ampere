@@ -1,20 +1,26 @@
-# TodoMVC done with re-frame
+# TodoMVC done with Ampere
 
-A [re-frame](https://github.com/Day8/re-frame) implementation of [TodoMVC](http://todomvc.com/).
+An [Ampere](https://github.com/ul/ampere) implementation of [TodoMVC](http://todomvc.com/).
 
 
 ## Setup And Run
 
 1. Install [Leiningen](http://leiningen.org/)  (plus Java).
 
-1. Get the re-frame repo
+1. Get the Ampere repo
    ```
-   git clone https://github.com/Day8/re-frame.git
+   git clone https://github.com/ul/ampere.git
+   cd ampere
+   ```
+
+1. Install it locally (not pushed in Clojars yet, sorry)
+   ```
+   lein install
    ```
 
 1. cd to the right example directory
    ```
-   cd re-frame/examples/todomvc
+   cd examples/todomvc
    ```
 
 1. clean build
@@ -29,13 +35,13 @@ A [re-frame](https://github.com/Day8/re-frame) implementation of [TodoMVC](http:
 
 ## Exploring The Code
 
-From the re-frame readme:
 ```
-To build a re-frame app, you:
+To build an Ampere app, you:
   - design your app's data structure (data layer)
-  - write and register subscription functions (query layer)
-  - write Reagent component functions (view layer)
+  - write formulæ cells (query layer)
+  - write Om/Reagent/whatever-supported-by-adapters component functions (view layer)
   - write and register event handler functions (control layer and/or state transition layer)
+  - complex logic could be drawn & compiled with VFSM and then registered with `vfsm` middleware
 ```
 
 In `src`, there's a matching set of files (each small):
@@ -43,8 +49,8 @@ In `src`, there's a matching set of files (each small):
 src
 ├── core.cljs         <--- entry point, plus history
 ├── db.cljs           <--- data related  (data layer)
-├── subs.cljs         <--- subscription handlers  (query layer)
-├── views.cljs        <--- reagent  components (view layer)
+├── subs.cljs         <--- formulæ cells (query layer)
+├── views.cljs        <--- components (view layer)
 └── handlers.cljs     <--- event handlers (control/update layer)
 ```
 
