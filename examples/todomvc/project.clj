@@ -4,7 +4,7 @@
                  [ampere "0.1.0-SNAPSHOT"]
                  [secretary "1.2.3"]]
 
-  :plugins [[lein-cljsbuild "1.0.5"]]
+  :plugins [[lein-cljsbuild "1.0.6"]]
 
   :hooks [leiningen.cljsbuild]
 

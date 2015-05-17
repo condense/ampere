@@ -1,10 +1,8 @@
-(ns todomvc.views
+(ns todomvc.views.om
   (:require [sablono.core :refer-macros [html]]
             [om.core :as om :include-macros true]
             [ampere.core :refer [dispatch]]
             [todomvc.subs :as subs]))
-
-;;; But Om replace Reagent on verbose and obscure way :-(
 
 (defn todo-input [{:keys [title on-save on-stop] :as props} owner]
   (reify

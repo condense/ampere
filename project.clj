@@ -11,4 +11,6 @@
                  [vfsm "0.1.0-SNAPSHOT"]
                  ;; Om
                  [sablono "0.3.4"]
-                 [org.omcljs/om "0.8.8"]])
+                 [org.omcljs/om "0.8.8"]
+                 ;; Hoplon
+                 [tailrecursion/hoplon "6.0.0-alpha1"]])
