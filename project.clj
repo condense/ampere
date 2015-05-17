@@ -9,8 +9,11 @@
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [tailrecursion/javelin "3.8.0"]
                  [vfsm "0.1.0-SNAPSHOT"]
+                 ;; FIXME move adapters to separate packages
                  ;; Om
                  [sablono "0.3.4"]
                  [org.omcljs/om "0.8.8"]
                  ;; Hoplon
-                 [tailrecursion/hoplon "6.0.0-alpha1"]])
+                 [tailrecursion/hoplon "6.0.0-alpha1"]
+                 ;; Reagent
+                 [reagent "0.5.0"]])

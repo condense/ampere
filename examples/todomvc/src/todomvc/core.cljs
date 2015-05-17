@@ -1,15 +1,21 @@
 (ns todomvc.core
   (:require-macros [secretary.core :refer [defroute]])
   (:require [goog.events :as events]
-            [om.core :as om :include-macros true]
-            [tailrecursion.hoplon :as h :include-macros true]
             [ampere.core :refer [dispatch dispatch-sync]]
-            [ampere.adapters.om]
             [secretary.core :as secretary]
             [todomvc.handlers]
             [todomvc.subs :as subs]
+
+            [tailrecursion.hoplon :as h :include-macros true]
+            [todomvc.views.hoplon]
+
+            [om.core :as om :include-macros true]
+            [ampere.adapters.om]
             [todomvc.views.om]
-            [todomvc.views.hoplon])
+
+            [reagent.core]
+            [ampere.adapters.reagent]
+            [todomvc.views.reagent])
   (:import [goog History]
            [goog.history EventType]
            [goog Uri]))
@@ -45,10 +51,13 @@
                        :opts       {:cells {:todos           subs/todos
                                             :completed-count subs/completed-count}}}))
       "hoplon" (h/replace-children! app (todomvc.views.hoplon/todo-app))
+      "reagent" (do
+                  (ampere.adapters.reagent/init!)
+                  (reagent.core/render [todomvc.views.reagent/todo-app] app))
       (h/replace-children!
         app (h/div
               (h/h1 "Unknown view: " view)
               (h/h2 "Try ?view="
-                    (h/ul (for [v ["om" "hoplon"]] (h/li v)))))))))
+                    (h/ul (for [v ["om" "hoplon" "reagent"]] (h/li v)))))))))
 
 (main)
