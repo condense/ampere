@@ -70,3 +70,16 @@
         (binding [*handling* event-v]
           (handler-fn app-db event-v))))))
 
+;;; ## Some common handlers
+
+(defn setter
+  "Simple handler to assoc-in value at specified path.
+  If path is empty, reset the whole state."
+  [db [_ & args]]
+  {:pre  [(not (empty? args)) (or (> (count args) 1) (map? (first args)))]
+   :post [map?]}
+  (let [value (last args)]
+    (if-let [path (-> args butlast flatten not-empty)]
+      (assoc-in db path value)
+      value)))
+
