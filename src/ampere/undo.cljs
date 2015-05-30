@@ -26,9 +26,9 @@
   "Stores the value currently in app-db, so the user can later undo."
   [explanation]
   (dosync
-   (clear-redos!)
-   (swap! undo-list #(take @max-undos (conj % {:db          @app-db
-                                               :explanation explanation})))))
+    (clear-redos!)
+    (swap! undo-list #(take @max-undos (conj % {:db          @app-db
+                                                :explanation explanation})))))
 
 (def undos? (cell= (pos? (count undo-list))))
 (def redos? (cell= (pos? (count redo-list))))
