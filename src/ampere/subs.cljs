@@ -18,12 +18,8 @@
   (swap! key->fn assoc key-v handler-fn))
 
 (defn subscribe
-  "Returns a cell (or type returned by *adapt*) which observes a part of app-db."
+  "Returns a reaction which observes a part of app-db."
   [v]
   (let [key-v       (first-in-vector v)
-        handler-fn  (get @key->fn key-v)]
-    (if (nil? handler-fn)
-      (do
-        (warn "ampere: no subscription handler registered for: \"" key-v "\".  Subscribing to path.")
-        (make-reaction #(get-in @app-db v)))
-      (handler-fn app-db v))))
+        handler-fn  (get @key->fn key-v (fn [db] (make-reaction #(get-in @db v))))]
+    (handler-fn app-db v)))

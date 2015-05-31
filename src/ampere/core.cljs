@@ -44,6 +44,7 @@
 
 (defn init! [{:keys [handlers subs] :as config}]
   (doseq [[id & middleware+handler] handlers]
-    (apply register-handler id (utils/flat+last middleware+handler)))
+    (let [v (flatten middleware+handler)]
+      (register-handler id (-> v butlast vec) (last v))))
   (doseq [[id sub] subs]
     (register-sub id sub)))

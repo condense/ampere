@@ -1,4 +1,4 @@
-(defproject ampere "0.1.1"
+(defproject ampere "0.1.2"
   :description "Ampere: UniDirectional Flow for VDOM."
   :url "https://github.com/ul/ampere"
   :license {:name "Eclipse Public License"

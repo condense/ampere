@@ -7,7 +7,8 @@
             [ampere.utils :as utils]))
 
 (defn- sub [owner subs]
-  (let [rx (reaction (utils/map-vals (comp deref subscribe) subs))]
+  (let [subs (utils/map-vals subscribe subs)
+        rx (reaction (utils/map-vals deref subs))]
     (add-watch rx :om #(om/refresh! owner))
     (om/set-state! owner :rx rx)))
 
