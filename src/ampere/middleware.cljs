@@ -1,9 +1,8 @@
 (ns ampere.middleware
   (:require
-   [tailrecursion.javelin :refer [cell?]]
+   [reagent.ratom  :refer [IReactiveAtom]]
    [ampere.undo :refer [store-now!]]
    [ampere.utils :refer [warn log group groupEnd error]]
-   [vfsm.core :as vfsm]
    [clojure.data :as data]))
 
 ;;; See docs in the [Wiki](https://github.com/Day8/re-frame/wiki)
@@ -21,7 +20,7 @@
   [handler]
   (fn pure-handler
     [app-db event-vec]
-    (if (not (cell? app-db))
+    (if (not (satisfies? IReactiveAtom app-db))
       (do
         (if (map? app-db)
           (warn "ampere: Looks like \"pure\" is in the middleware pipeline twice. Ignoring.")
@@ -166,15 +165,3 @@
       (let [new-db (handler db v)]
         (f new-db v)                                   ; call f for side effects
         new-db))))
-
-(defn vfsm
-  "Middleware factory which executes VFSM `spec` over db, temporarily setting
-   `event-key` (default is `:event`) to `v` to give VFSM access to event data."
-  [ctx & [event-key]]
-  (let [event-key (or event-key :event)]
-    (fn vfsm-middleware [spec]
-      (fn vfsm-handler [db v]
-        (-> db
-            (assoc event-key v)
-            (vfsm/execute spec ctx)
-            (dissoc event-key))))))

@@ -42,3 +42,6 @@
 
 (defn map-vals [f m]
   (persistent! (reduce-kv (fn [z k v] (assoc! z k (f v))) (transient {}) m)))
+
+(defn flat+last [args]
+  [(-> args butlast flatten) (last args)])

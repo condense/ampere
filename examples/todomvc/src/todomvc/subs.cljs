@@ -1,6 +1,5 @@
 (ns todomvc.subs
-  (:require [tailrecursion.javelin :refer-macros [cell=]]
-            [ampere.core :refer [app-db]]))
+  (:require [reagent.ratom :refer-macros [reaction]]))
 
 ;;; Helpers
 
@@ -12,11 +11,20 @@
     :all identity
     nil))
 
-;;; Cells replace subscriptions with very succint and readable code :-)
+(defn todos [db _]
+  (reaction (vals (:todos @db))))
 
-(def todos (cell= (vals (:todos app-db))))
-(def showing (cell= (:showing app-db)))
-(def visible-todos (cell= (when-let [filter-fn (filter-fn-for showing)]
-                            (filter filter-fn todos))))
-(def completed-count (cell= (count (filter :done todos))))
-(def footer-stats (cell= [(- (count todos) completed-count) completed-count showing]))
+(defn showing [db _]
+  (reaction (:showing @db)))
+
+(defn visible-todos [db _]
+  (reaction (when-let [filter-fn (filter-fn-for @(showing db _))]
+              (filter filter-fn @(todos db _)))))
+
+(defn completed-count [db _]
+  (reaction (count (filter :done @(todos db _)))))
+
+(defn footer-stats [db _]
+  (reaction
+    (let [cc @(completed-count db _)]
+      [(- (count @(todos db _)) cc) cc @(showing db _)])))

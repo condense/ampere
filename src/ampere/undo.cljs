@@ -1,6 +1,7 @@
 (ns ampere.undo
   (:refer-clojure :exclude [dosync])
-  (:require [tailrecursion.javelin :refer [cell] :refer-macros [cell= dosync]]
+  (:require [reagent.core :as r]
+            [reagent.ratom :refer-macros [reaction]]
             [ampere.utils :refer [warn]]
             [ampere.db :refer [app-db]]
             [ampere.handlers :as handlers]))
@@ -10,32 +11,31 @@
 (def ^:private max-undos "Maximum number of undo states maintained." (atom 50))
 (defn set-max-undos! [n] (reset! max-undos n))
 
-(def ^:private undo-list "A list of history states." (cell (list)))
-(def ^:private redo-list "A list of future states, caused by undoing."
-  (cell (list)))
+(def ^:private undo-list "A list of history states." (r/atom (list)))
+(def ^:private redo-list
+  "A list of future states, caused by undoing."
+  (r/atom (list)))
 
 (defn- clear-undos! [] (reset! undo-list (list)))
 (defn- clear-redos! [] (reset! redo-list (list)))
 
 (defn clear-history! []
-  (dosync
-   (clear-undos!)
-   (clear-redos!)))
+  (clear-undos!)
+  (clear-redos!))
 
 (defn store-now!
   "Stores the value currently in app-db, so the user can later undo."
   [explanation]
-  (dosync
-   (clear-redos!)
-   (swap! undo-list #(take @max-undos (conj % {:db          @app-db
-                                               :explanation explanation})))))
+  (clear-redos!)
+  (swap! undo-list #(take @max-undos (conj % {:db          @app-db
+                                              :explanation explanation}))))
 
-(def undos? (cell= (pos? (count undo-list))))
-(def redos? (cell= (pos? (count redo-list))))
+(def undos? (reaction (pos? (count @undo-list))))
+(def redos? (reaction (pos? (count @redo-list))))
 
 (def undo-explanations
   "List of undo descriptions."
-  (cell= (map :explanation undo-list)))
+  (reaction (map :explanation @undo-list)))
 
 ;;; ## Event handlers
 
@@ -43,11 +43,10 @@
   "Pass `from` ← `undo-list` and `to` ← `redo-list` to undo,
    and vice versa to redo."
   [from to]
-  (dosync
-   (let [u @from]
-     (swap! to conj {:db @app-db})
-     (swap! from pop)
-     (reset! app-db (-> u peek :db)))))
+  (let [u @from]
+    (swap! to conj {:db @app-db})
+    (swap! from pop)
+    (reset! app-db (-> u peek :db))))
 
 (defn- dodo-n
   "Undo/redo until we reach n or run out of undos/redos."

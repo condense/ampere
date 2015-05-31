@@ -1,6 +1,6 @@
 (ns ampere.handlers
   (:require [ampere.db :refer [app-db]]
-            [ampere.utils :refer [first-in-vector warn error]]))
+            [ampere.utils :refer [first-in-vector warn error flat+last]]))
 
 ;;; ## Composing middleware
 
@@ -78,8 +78,8 @@
   [db [_ & args]]
   {:pre  [(not (empty? args)) (or (> (count args) 1) (map? (first args)))]
    :post [map?]}
-  (let [value (last args)]
-    (if-let [path (-> args butlast flatten not-empty)]
-      (assoc-in db path value)
-      value)))
+  (let [[path value] (flat+last args)]
+    (if (empty? path)
+      value
+      (assoc-in db path value))))
 

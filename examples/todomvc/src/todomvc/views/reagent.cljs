@@ -1,8 +1,6 @@
 (ns todomvc.views.reagent
-  (:require [ampere.core :refer [dispatch]]
-            [ampere.adapters.reagent :refer [subscribe]]
-            [reagent.core :refer [atom]]
-            [todomvc.subs :as subs]))
+  (:require [ampere.core :refer [dispatch subscribe]]
+            [reagent.core :refer [atom]]))
 
 (defn todo-input [{:keys [title on-save on-stop]}]
   (let [val (atom title)
@@ -27,7 +25,7 @@
 
 (defn stats-footer
   []
-  (let [footer-stats (subscribe subs/footer-stats)]
+  (let [footer-stats (subscribe [:footer-stats])]
     (fn []
       (let [[active done filter] @footer-stats
             props-for (fn [filter-kw txt]
@@ -71,9 +69,9 @@
 
 (defn todo-app
   []
-  (let [todos           (subscribe subs/todos)
-        visible-todos   (subscribe subs/visible-todos)
-        completed-count (subscribe subs/completed-count)]
+  (let [todos           (subscribe [:todos])
+        visible-todos   (subscribe [:visible-todos])
+        completed-count (subscribe [:completed-count])]
     (fn []
       [:div
        [:section#todoapp

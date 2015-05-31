@@ -1,13 +1,14 @@
 (ns ampere.router
   (:require-macros [cljs.core.async.macros :refer [go-loop go]])
-  (:require [ampere.handlers :refer [handle]]
+  (:require [reagent.core :refer [flush]]
+            [ampere.handlers :refer [handle]]
             [ampere.utils :refer [warn error]]
             [cljs.core.async :refer [chan put! <! timeout]]))
 
 (def ^:dynamic *flush-dom*
   "Renderer-specific function to flush DOM before CPU-intensive handler call.
   Must be set on app init by adapter."
-  #(warn "ampere.router/*flush-dom* is not set, probably adapter is not initialized properly"))
+  flush)
 
 ;;; ## The Event Conveyor Belt
 ;;;

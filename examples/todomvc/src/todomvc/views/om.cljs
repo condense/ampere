@@ -1,8 +1,7 @@
 (ns todomvc.views.om
   (:require [sablono.core :refer-macros [html]]
             [om.core :as om :include-macros true]
-            [ampere.core :refer [dispatch]]
-            [todomvc.subs :as subs]))
+            [ampere.core :refer [dispatch]]))
 
 (defn todo-input [{:keys [title on-save on-stop] :as props} owner]
   (reify
@@ -104,9 +103,9 @@
                 :on-change #(dispatch [:complete-all-toggle])}]
               [:label {:for "toggle-all"} "Mark all as complete"]
               (om/build todo-list {}
-                        {:opts {:cells {:visible-todos subs/visible-todos}}})]
+                        {:opts {:subs {:visible-todos [:visible-todos]}}})]
              (om/build stats-footer {}
-                       {:opts {:cells {:footer-stats subs/footer-stats}}})])]
+                       {:opts {:subs {:footer-stats [:footer-stats]}}})])]
          [:footer#info
           [:p "Double-click to edit a todo"]]]))))
 
