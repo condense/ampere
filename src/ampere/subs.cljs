@@ -1,5 +1,6 @@
 (ns ampere.subs
-  (:require [ampere.db    :refer [app-db]]
+  (:require [reagent.ratom :refer [make-reaction]]
+            [ampere.db    :refer [app-db]]
             [ampere.utils :refer [first-in-vector warn error]]))
 
 (def ^:private key->fn "handler-id → handler-fn" (atom {}))
@@ -22,5 +23,7 @@
   (let [key-v       (first-in-vector v)
         handler-fn  (get @key->fn key-v)]
     (if (nil? handler-fn)
-      (error "ampere: no subscription handler registered for: \"" key-v "\".  Returning a nil subscription.")
+      (do
+        (warn "ampere: no subscription handler registered for: \"" key-v "\".  Subscribing to path.")
+        (make-reaction #(get-in @app-db v)))
       (handler-fn app-db v))))
