@@ -10,6 +10,7 @@
 (def dispatch-sync router/dispatch-sync)
 
 (def clear-event-handlers! handlers/clear-handlers!)
+(def setter handlers/setter)
 
 (def register-sub subs/register)
 (def clear-sub-handlers! subs/clear-handlers!)
