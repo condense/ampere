@@ -26,6 +26,8 @@
    will inject `{:x @x-reaction :y @y-reaction}` into `f` props."
   [[f cursor m subs] owner]
   (reify
+    om/IDisplayName
+    (display-name [_] "Ampere Om Wrapper")
     om/IWillMount
     (will-mount [_] (sub owner subs))
     om/IWillReceiveProps
