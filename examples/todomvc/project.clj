@@ -1,7 +1,8 @@
 (defproject todomvc-ampere "0.1.0-SNAPSHOT"
   :dependencies [[org.clojure/clojure "1.7.0-RC1"]
-                 [org.clojure/clojurescript "0.0-3297"]
-                 [ampere "0.1.0"]
+                 [org.clojure/clojurescript "0.0-3308"]
+                 [ampere "0.2.0-SNAPSHOT"]
+
                  [sablono "0.3.4"]
                  [secretary "1.2.3"]]
 

@@ -1,7 +1,7 @@
 (ns ampere.undo
   (:refer-clojure :exclude [dosync])
-  (:require [reagent.core :as r]
-            [reagent.ratom :refer-macros [reaction]]
+  (:require-macros [freactive.macros :refer [rx]])
+  (:require [freactive.core :as r]
             [ampere.utils :refer [warn]]
             [ampere.db :refer [app-db]]
             [ampere.handlers :as handlers]))
@@ -30,12 +30,12 @@
   (swap! undo-list #(take @max-undos (conj % {:db          @app-db
                                               :explanation explanation}))))
 
-(def undos? (reaction (pos? (count @undo-list))))
-(def redos? (reaction (pos? (count @redo-list))))
+(def undos? (rx (pos? (count @undo-list))))
+(def redos? (rx (pos? (count @redo-list))))
 
 (def undo-explanations
   "List of undo descriptions."
-  (reaction (map :explanation @undo-list)))
+  (rx (map :explanation @undo-list)))
 
 ;;; ## Event handlers
 

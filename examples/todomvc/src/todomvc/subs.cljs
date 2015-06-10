@@ -1,5 +1,6 @@
 (ns todomvc.subs
-  (:require [reagent.ratom :refer-macros [reaction]]))
+  (:require-macros [freactive.macros :refer [rx]])
+  (:require [freactive.core :refer [cursor]]))
 
 ;;; Helpers
 
@@ -12,19 +13,26 @@
     nil))
 
 (defn todos [db _]
-  (reaction (vals (:todos @db))))
+  (rx (vals (:todos @db))))
 
 (defn showing [db _]
-  (reaction (:showing @db)))
+  (cursor db :showing))
 
+;; FIXME demonstrate how to use static subs to reduce boilerplate and improve perf
 (defn visible-todos [db _]
-  (reaction (when-let [filter-fn (filter-fn-for @(showing db _))]
-              (filter filter-fn @(todos db _)))))
+  (let [showing (showing db _)
+        todos (todos db _)]
+    (rx (when-let [filter-fn (filter-fn-for @showing)]
+          (filter filter-fn @todos)))))
 
 (defn completed-count [db _]
-  (reaction (count (filter :done @(todos db _)))))
+  (let [todos (todos db _)]
+    (rx (count (filter :done @todos)))))
 
 (defn footer-stats [db _]
-  (reaction
-    (let [cc @(completed-count db _)]
-      [(- (count @(todos db _)) cc) cc @(showing db _)])))
+  (let [cc (completed-count db _)
+        todos (todos db _)
+        showing (showing db _)]
+    (rx
+     (let [cc @cc]
+       [(- (count @todos) cc) cc @showing]))))

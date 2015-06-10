@@ -1,5 +1,6 @@
 (ns todomvc.views.reagent
-  (:require [ampere.core :refer [dispatch subscribe]]
+  (:require [ampere.core :refer [dispatch]]
+            [ampere.reagent :refer [subscribe]]
             [reagent.core :refer [atom]]))
 
 (defn todo-input [{:keys [title on-save on-stop]}]
@@ -7,8 +8,8 @@
         stop #(do (reset! val "")
                   (if on-stop (on-stop)))
         save #(let [v (-> @val str clojure.string/trim)]
-               (if-not (empty? v) (on-save v))
-               (stop))]
+                (if-not (empty? v) (on-save v))
+                (stop))]
     (fn [props]
       [:input (merge props
                      {:type "text"
@@ -16,12 +17,12 @@
                       :on-blur save
                       :on-change #(reset! val (-> % .-target .-value))
                       :on-key-down #(case (.-which %)
-                                     13 (save)
-                                     27 (stop)
-                                     nil)})])))
+                                      13 (save)
+                                      27 (stop)
+                                      nil)})])))
 
 (def todo-edit (with-meta todo-input
-                          {:component-did-mount #(.focus (reagent.core/dom-node %))}))
+                 {:component-did-mount #(.focus (reagent.core/dom-node %))}))
 
 (defn stats-footer
   []

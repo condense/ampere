@@ -11,6 +11,7 @@
             [todomvc.views.om]
 
             [reagent.core]
+            [ampere.reagent]
             [todomvc.views.reagent])
   (:import goog.History
            goog.history.EventType
@@ -41,8 +42,7 @@
           :showing subs/showing
           :visible-todos subs/visible-todos
           :completed-count subs/completed-count
-          :footer-stats subs/footer-stats}
-   })
+          :footer-stats subs/footer-stats}})
 
 ;; -- Entry Point -------------------------------------------------------------
 
@@ -60,7 +60,9 @@
                        :instrument ampere.om/instrument
                        :opts       {:subs {:todos           [:todos]
                                            :completed-count [:completed-count]}}}))
-      "reagent" (reagent.core/render [todomvc.views.reagent/todo-app] app)
+      "reagent" (do
+                  (ampere.reagent/init!)
+                  (reagent.core/render [todomvc.views.reagent/todo-app] app))
       nil)))
 
 (main)

@@ -1,6 +1,6 @@
 (ns ampere.db
   "Application State"
-  (:require [reagent.core :refer [atom]]))
+  (:require [freactive.core :refer [atom]]))
 
 (def app-db
   "Should not be referenced directly by application code.

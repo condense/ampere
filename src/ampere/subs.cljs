@@ -1,5 +1,5 @@
 (ns ampere.subs
-  (:require [reagent.ratom :refer [make-reaction]]
+  (:require [freactive.core :refer [rx*]]
             [ampere.db    :refer [app-db]]
             [ampere.utils :refer [first-in-vector warn error]]))
 
@@ -18,8 +18,9 @@
   (swap! key->fn assoc key-v handler-fn))
 
 (defn subscribe
-  "Returns a reaction which observes a part of app-db."
+  "Returns a reaction which observes a part of app-db.
+  FIXME allow static subscriptions, wrap them to be not disposed by adapter."
   [v]
   (let [key-v       (first-in-vector v)
-        handler-fn  (get @key->fn key-v (fn [db] (make-reaction #(get-in @db v))))]
+        handler-fn  (get @key->fn key-v (fn [db] (rx* #(get-in @db v))))] ; REVIEW rx* laziness
     (handler-fn app-db v)))
