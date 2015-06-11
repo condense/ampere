@@ -2,22 +2,69 @@
   "Om-specific API"
   (:require-macros [freactive.macros :refer [rx]])
   (:require [om.core :as om :include-macros true]
-            [freactive.core :refer [dispose]]
+            [freactive.core :as r :refer [dispose]]
             [ampere.core :refer [subscribe]]
             [ampere.router :as router]
             [ampere.utils :as utils]))
 
-(defn- sub [owner subs]
-  ;; NOTE do not put subscribe inside rx!
-  (let [subs (utils/map-vals subscribe subs)
-        subs (rx (utils/map-vals deref subs))]
-    (.addInvalidationWatch subs :om #(om/refresh! owner))
-    (om/set-state! owner :subs subs)))
+(defn get-key [v] (get (meta v) :key v))
 
-(defn- unsub [owner]
-  (let [subs (om/get-state owner :subs)]
-    (.removeInvalidationWatch subs :om)
-    (dispose subs)))
+(defn sub [c v]
+  (let [rx (subscribe v)]
+    (aset rx "__ampere_v" v)
+    (om/set-state-nr! c [::rx (get-key v)] [v rx])
+    (.addInvalidationWatch rx :om #(om/refresh! c))
+    rx))
+
+(defn unsub [c v]
+  (let [k (get-key v)]
+    (when-let [[_ rx] (om/get-state c [::rx k])]
+      (.removeInvalidationWatch rx :om)
+      (dispose rx)
+      (om/update-state-nr! c ::rx #(dissoc % k)))))
+
+(extend-protocol om/ICursor
+  r/Cursor
+  (-path [_])
+  (-state [rx] rx)
+  r/ReactiveExpression
+  (-path [_])
+  (-state [rx] rx))
+
+(extend-protocol om/IValue
+  r/Cursor
+  (-value [rx] @rx)
+  r/ReactiveExpression
+  (-value [rx] @rx))
+
+(extend-protocol om/IOmRef
+  r/Cursor
+  (-add-dep! [rx _] rx)
+  (-remove-dep! [rx c] (unsub c (aget rx "__ampere_v")))
+  (-refresh-deps! [_])
+  (-get-deps [_])
+  r/ReactiveExpression
+  (-add-dep! [rx _] rx)
+  (-remove-dep! [rx c] (unsub c (aget rx "__ampere_v")))
+  (-refresh-deps! [_])
+  (-get-deps [_]))
+
+(defn upsert-ref [c v]
+  (if-let [[prev-v rx] (om/get-state c [::rx (get-key v)])]
+    (do
+      (if (= prev-v v)
+        rx
+        ;; if you are passing variable in time args to subscription,
+        ;; name it with static key to help gc:
+        ;; (observe ^{:key :data1} [:data x y z])
+        (do
+          (.removeInvalidationWatch rx :om)
+          (dispose rx)
+          (sub c v))))
+    (sub c v)))
+
+(defn observe [c v]
+  @(om/observe c (upsert-ref c v)))
 
 (defn- Wrapper
   "Wrapper component that tracks reactions and rerender `f` wrappee on their run
@@ -28,22 +75,25 @@
   (reify
     om/IDisplayName
     (display-name [_] "Ampere Om Wrapper")
-    om/IWillMount
-    (will-mount [_] (sub owner subs))
     om/IWillReceiveProps
     (will-receive-props [_ [_ _ _ next-subs]]
-      (when (not= next-subs (om/get-props owner 3))
-        (unsub owner)
-        (sub owner next-subs)))
-    om/IWillUnmount
-    (will-unmount [_] (unsub owner))
-    om/IRenderState
-    (render-state [_ {:keys [subs]}]
-      (om/build* f (merge cursor @subs) m))))
+      (let [subs (om/get-props owner 3)]
+        (when (not= subs next-subs)
+          (let [s1 (-> subs vals set)
+                s2 (-> next-subs vals set)
+                garbage (clojure.set/difference s1 s2)]
+            (doseq [v garbage]
+              (unsub owner v))))))
+    om/IRender
+    (render [_]
+      (let [rx (utils/map-vals (partial observe owner) subs)]
+        (om/build* f (merge cursor rx) m)))))
 
 (defn instrument
   "Add this as `:instrument` in `om/root` options to enable components having
-  `:subs` in their `:opts` to subscribe to derived data & merge it into props.
+  `:subs` in their `:opts` to subscribe to derived data & merge it into props
+  or calling `(ampere.om/observe owner ^{:key optional-key-if-sub-is-dynamic} subscription-vector)`
+  inside render to track subscription.
   It uses `ampere/subscribe` in more om-ish way."
   [f cursor m]
   (if-let [subs (get-in m [:opts :subs])]

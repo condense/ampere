@@ -1,7 +1,8 @@
 (ns todomvc.views.om
   (:require [sablono.core :refer-macros [html]]
             [om.core :as om :include-macros true]
-            [ampere.core :refer [dispatch]]))
+            [ampere.core :refer [dispatch]]
+            [ampere.om :refer [observe]]))
 
 (defn todo-input [{:keys [title on-save on-stop] :as props} owner]
   (reify
@@ -81,31 +82,34 @@
        [:ul#todo-list
         (om/build-all todo-item visible-todos)]))))
 
-(defn todo-app [{:keys [todos completed-count]} owner]
+(defn todo-app [_ owner]
   (reify
     om/IRender
     (render [_]
-      (html
-       [:div
-        [:section#todoapp
-         [:header#header
-          [:h1 "todos"]
-          (om/build
-           todo-input {:id          "new-todo"
-                       :placeholder "What needs to be done?"
-                       :on-save     #(dispatch [:add-todo %])})]
-         (when-not (empty? todos)
-           [:div
-            [:section#main
-             [:input#toggle-all
-              {:type "checkbox"
-               :checked (pos? completed-count)
-               :on-change #(dispatch [:complete-all-toggle])}]
-             [:label {:for "toggle-all"} "Mark all as complete"]
-             (om/build todo-list {}
-                       {:opts {:subs {:visible-todos [:visible-todos]}}})]
-            (om/build stats-footer {}
-                      {:opts {:subs {:footer-stats [:footer-stats]}}})])]
-        [:footer#info
-         [:p "Double-click to edit a todo"]]]))))
+      ;; just for fun let subscribe inside the component
+      (let [todos (observe owner ^{:key :super-todos} [:todos])
+            completed-count (observe owner [:completed-count])]
+        (html
+         [:div
+          [:section#todoapp
+           [:header#header
+            [:h1 "todos"]
+            (om/build
+             todo-input {:id          "new-todo"
+                         :placeholder "What needs to be done?"
+                         :on-save     #(dispatch [:add-todo %])})]
+           (when-not (empty? todos)
+             [:div
+              [:section#main
+               [:input#toggle-all
+                {:type      "checkbox"
+                 :checked   (pos? completed-count)
+                 :on-change #(dispatch [:complete-all-toggle])}]
+               [:label {:for "toggle-all"} "Mark all as complete"]
+               (om/build todo-list {}
+                         {:opts {:subs {:visible-todos [:visible-todos]}}})]
+              (om/build stats-footer {}
+                        {:opts {:subs {:footer-stats [:footer-stats]}}})])]
+          [:footer#info
+           [:p "Double-click to edit a todo"]]])))))
 

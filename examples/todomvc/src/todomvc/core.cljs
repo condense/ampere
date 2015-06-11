@@ -55,11 +55,9 @@
     (case view
       "om" (do
              (ampere.om/init!)
-             (om/root todomvc.views.om/todo-app {}
+             (om/root todomvc.views.om/todo-app nil
                       {:target     app
-                       :instrument ampere.om/instrument
-                       :opts       {:subs {:todos           [:todos]
-                                           :completed-count [:completed-count]}}}))
+                       :instrument ampere.om/instrument}))
       "reagent" (do
                   (ampere.reagent/init!)
                   (reagent.core/render [todomvc.views.reagent/todo-app] app))
