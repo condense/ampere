@@ -5,8 +5,8 @@
 
                  ;[org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  ;[freactive.core "0.2.0-SNAPSHOT"]
-                 ;[org.omcljs/om "0.8.8"]
-                 ;[reagent "0.5.0"]
+                 [org.omcljs/om "0.8.8"]
+                 [reagent "0.5.0"]
 
                  [sablono "0.3.4"]
                  [secretary "1.2.3"]]
