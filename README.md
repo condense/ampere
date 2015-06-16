@@ -14,7 +14,7 @@ And... if Om, why not any another View library? You can use Ampere with Om, Reag
 ## Usage
 
 ```
-[ampere "0.2.0-SNAPSHOT"]
+[condense/ampere "0.2.0-SNAPSHOT"]
 ```
 
 See [re-frame's README][1] for general architecture use, [freactive.core's README][4] for deriving data with its tools.
@@ -32,4 +32,4 @@ Distributed under The MIT License (MIT) - See LICENSE.txt
 [2]: https://github.com/omcljs/om
 [3]: https://github.com/reagent-project/reagent
 [4]: https://github.com/aaronc/freactive.core
-[5]: https://github.com/ul/ampere/tree/master/examples/todomvc/
+[5]: https://github.com/condense/ampere/tree/master/examples/todomvc/
