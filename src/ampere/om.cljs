@@ -13,15 +13,50 @@
   (let [rx (subscribe v)]
     (aset rx "__ampere_v" v)
     (om/set-state-nr! c [::rx (get-key v)] [v rx])
-    (.addInvalidationWatch rx :om #(om/refresh! c))
+    (add-watch rx :om #(om/refresh! c))
     rx))
 
 (defn unsub [c v]
   (let [k (get-key v)]
     (when-let [[_ rx] (om/get-state c [::rx k])]
-      (.removeInvalidationWatch rx :om)
+      (remove-watch rx :om)
       (dispose rx)
       (om/update-state-nr! c ::rx #(dissoc % k)))))
+
+(defn adapt-state [state]
+  (let [properties (atom {})
+        listeners (atom {})
+        render-queue (atom #{})]
+    (specify! state
+      om/IRootProperties
+      (-set-property! [_ id k v]
+        (swap! properties assoc-in [id k] v))
+      (-remove-property! [_ id k]
+        (swap! properties dissoc id k))
+      (-remove-properties! [_ id]
+        (swap! properties dissoc id))
+      (-get-property [_ id k]
+        (get-in @properties [id k]))
+      om/INotify
+      (-listen! [this key tx-listen]
+        (when-not (nil? tx-listen)
+          (swap! listeners assoc key tx-listen))
+        this)
+      (-unlisten! [this key]
+        (swap! listeners dissoc key)
+        this)
+      (-notify! [this tx-data root-cursor]
+        (doseq [[_ f] @listeners]
+          (f tx-data root-cursor))
+        this)
+      om/IRenderQueue
+      (-get-queue [this] @render-queue)
+      (-queue-render! [this c]
+        (when-not (contains? @render-queue c)
+          (swap! render-queue conj c)
+          (swap! this update ::c (fnil inc 0))))
+      (-empty-queue! [this]
+        (swap! render-queue empty)))))
 
 (extend-protocol om/ICursor
   r/Cursor
@@ -58,7 +93,7 @@
         ;; name it with static key to help gc:
         ;; (observe ^{:key :data1} [:data x y z])
         (do
-          (.removeInvalidationWatch rx :om)
+          (remove-watch rx :om)
           (dispose rx)
           (sub c v))))
     (sub c v)))
