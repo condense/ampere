@@ -15,6 +15,7 @@
 (def register-sub subs/register)
 (def clear-sub-handlers! subs/clear-handlers!)
 (def subscribe subs/subscribe)
+(def sample subs/sample)
 
 (def pure middleware/pure)
 (def debug middleware/debug)
