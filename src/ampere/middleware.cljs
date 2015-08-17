@@ -33,7 +33,6 @@
           (if-not (identical? db new-db)
             (reset! app-db new-db)))))))
 
-
 (defn log-ex
   "Middleware which catches and prints any handler-generated exceptions to console.
   Handlers are called from within a core.async go-loop, and core.async produces
@@ -51,7 +50,6 @@
         (do
           (.error js/console (.-stack e))
           (throw e))))))
-
 
 (defn debug
   "Middleware which logs debug information to js/console for each event.

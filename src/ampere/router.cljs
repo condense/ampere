@@ -58,7 +58,7 @@
             ;; try to recover from this (probably uncaught) error as best we can
             (purge-chan)                                    ; get rid of any pending events
             (router-loop)                                   ; Exception throw will cause termination of go-loop. So, start another.
-            
+
             (throw e)))))                                   ; re-throw so the rest of the app's infrastructure (window.onerror?) gets told
     (recur)))
 

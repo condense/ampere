@@ -3,6 +3,7 @@
   (:require-macros [freactive.macros :refer [rx]])
   (:require [om.core :as om :include-macros true]
             [freactive.core :as r :refer [dispose]]
+            [goog.object :as obj]
             [ampere.core :refer [subscribe]]
             [ampere.router :as router]
             [ampere.utils :as utils]))
@@ -11,15 +12,18 @@
 
 (defn sub [c v]
   (let [rx (subscribe v)]
-    (aset rx "__ampere_v" v)
     (om/set-state-nr! c [::rx (get-key v)] [v rx])
-    (add-watch rx :om #(om/refresh! c))
+    (let [id (or (om/get-state c ::id)
+                 (let [id (gensym)]
+                   (om/set-state-nr! c ::id id)
+                   id))]
+      (add-watch rx id #(om/refresh! c)))
     rx))
 
 (defn unsub [c v]
   (let [k (get-key v)]
     (when-let [[_ rx] (om/get-state c [::rx k])]
-      (remove-watch rx :om)
+      (remove-watch rx (om/get-state c ::id))
       (dispose rx)
       (om/update-state-nr! c ::rx #(dissoc % k)))))
 
@@ -28,35 +32,35 @@
         listeners (atom {})
         render-queue (atom #{})]
     (specify! state
-      om/IRootProperties
-      (-set-property! [_ id k v]
-        (swap! properties assoc-in [id k] v))
-      (-remove-property! [_ id k]
-        (swap! properties dissoc id k))
-      (-remove-properties! [_ id]
-        (swap! properties dissoc id))
-      (-get-property [_ id k]
-        (get-in @properties [id k]))
-      om/INotify
-      (-listen! [this key tx-listen]
-        (when-not (nil? tx-listen)
-          (swap! listeners assoc key tx-listen))
-        this)
-      (-unlisten! [this key]
-        (swap! listeners dissoc key)
-        this)
-      (-notify! [this tx-data root-cursor]
-        (doseq [[_ f] @listeners]
-          (f tx-data root-cursor))
-        this)
-      om/IRenderQueue
-      (-get-queue [this] @render-queue)
-      (-queue-render! [this c]
-        (when-not (contains? @render-queue c)
-          (swap! render-queue conj c)
-          (swap! this update ::c (fnil inc 0))))
-      (-empty-queue! [this]
-        (swap! render-queue empty)))))
+              om/IRootProperties
+              (-set-property! [_ id k v]
+                              (swap! properties assoc-in [id k] v))
+              (-remove-property! [_ id k]
+                                 (swap! properties dissoc id k))
+              (-remove-properties! [_ id]
+                                   (swap! properties dissoc id))
+              (-get-property [_ id k]
+                             (get-in @properties [id k]))
+              om/INotify
+              (-listen! [this key tx-listen]
+                        (when-not (nil? tx-listen)
+                          (swap! listeners assoc key tx-listen))
+                        this)
+              (-unlisten! [this key]
+                          (swap! listeners dissoc key)
+                          this)
+              (-notify! [this tx-data root-cursor]
+                        (doseq [[_ f] @listeners]
+                          (f tx-data root-cursor))
+                        this)
+              om/IRenderQueue
+              (-get-queue [this] @render-queue)
+              (-queue-render! [this c]
+                              (when-not (contains? @render-queue c)
+                                (swap! render-queue conj c)
+                                (swap! this update ::c (fnil inc 0))))
+              (-empty-queue! [this]
+                             (swap! render-queue empty)))))
 
 (extend-protocol om/ICursor
   r/Cursor
@@ -75,12 +79,12 @@
 (extend-protocol om/IOmRef
   r/Cursor
   (-add-dep! [rx _] rx)
-  (-remove-dep! [rx c] (unsub c (aget rx "__ampere_v")))
+  (-remove-dep! [rx c] (unsub c (obj/get rx "__ampere_v")))
   (-refresh-deps! [_])
   (-get-deps [_])
   r/ReactiveExpression
   (-add-dep! [rx _] rx)
-  (-remove-dep! [rx c] (unsub c (aget rx "__ampere_v")))
+  (-remove-dep! [rx c] (unsub c (obj/get rx "__ampere_v")))
   (-refresh-deps! [_])
   (-get-deps [_]))
 
@@ -92,8 +96,8 @@
         ;; if you are passing variable in time args to subscription,
         ;; name it with static key to help gc:
         ;; (observe ^{:key :data1} [:data x y z])
-        (do
-          (remove-watch rx :om)
+        (let [id (om/get-state c ::id)]
+          (remove-watch rx id)
           (dispose rx)
           (sub c v))))
     (sub c v)))
