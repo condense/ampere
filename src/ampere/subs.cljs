@@ -31,22 +31,22 @@
 
 (defn subscribe
   "Returns a reaction which observes a part of app-db."
-  ([v] (subscribe app-db v))
-  ([db v]
+  ([v]
    (let [key-v (first-in-vector v)
          handler-fn (get @key->fn key-v path-handler)
-         cache-key [db v]]
+         cache-key [app-db v]]
      (if *cache?*
        (if-let [sub (get @cache cache-key)]
          sub
-         (let [sub (handler-fn db v)
+         (let [sub (handler-fn app-db v)
                sub (freactive.core/rx* #(deref sub) true #(swap! cache dissoc cache-key))]
            (obj/set sub "__ampere_v" v)
            (swap! cache assoc cache-key sub)
            sub))
-       (let [sub (handler-fn db v)]
+       (let [sub (handler-fn app-db v)]
          (obj/set sub "__ampere_v" v)
-         sub)))))
+         sub))))
+  ([db v] (binding [app-db db] (subscribe v))))
 
 (defn sample [db v]
   "Sample subscription against immutable db value."
