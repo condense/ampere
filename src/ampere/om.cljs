@@ -118,14 +118,21 @@
     (will-receive-props [_ [_ _ _ next-subs]]
       (let [subs (om/get-props owner 3)]
         (when (not= subs next-subs)
-          (let [s1 (-> subs vals set)
-                s2 (-> next-subs vals set)
-                garbage (clojure.set/difference s1 s2)]
-            (doseq [v garbage]
-              (unsub owner v))))))
+          (cond
+            (vector? subs) (unsub owner subs)
+            (vector? next-subs) (doseq [v subs] (unsub owner v))
+            :else
+            (let [s1 (-> subs vals set)
+                  s2 (-> next-subs vals set)
+                  garbage (clojure.set/difference s1 s2)]
+              (doseq [v garbage]
+                (unsub owner v)))))))
     om/IRender
     (render [_]
-      (let [rx (utils/map-vals (partial observe owner) subs)]
+      (let [rx (cond (vector? subs) (observe owner subs)
+                     (map? subs) (utils/map-vals (partial observe owner) subs)
+                     :else (do (utils/error "[:opts :subs] is expected to be a vector or map, got " subs)
+                               nil))]
         (om/build* f (merge cursor rx) m)))))
 
 (defn instrument
