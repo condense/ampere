@@ -18,12 +18,18 @@
 (defn remove-keys [pred m]
   (if m (reduce-kv (fn [m k _] (if (pred k) (dissoc m k) m)) m m) {}))
 
+(defn invalidate [& ks]
+  (if (empty? ks)
+    (reset! cache {})
+    (let [ks (set ks)]
+      (swap! cache (partial remove-keys (comp ks first second))))))
+
 (defn register
   "Registers a handler function for an id."
   [key-v handler-fn]
   (if (contains? @key->fn key-v)
     (warn "ampere: overwriting subscription-handler for: " key-v))   ;; allow it, but warn.
-  (swap! cache (partial remove-keys (comp (partial = key-v) first second))) ; [db [key-v ...]]
+  (invalidate key-v)
   (swap! key->fn assoc key-v handler-fn))
 
 (defn path-handler [db v]
