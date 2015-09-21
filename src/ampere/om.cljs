@@ -111,7 +111,7 @@
    with their values merged into cursor.
    E. g. `{:opts {:subs {:x [:sub-id1 params] :y [:sub-id2 params}}}`
    will inject `{:x @x-reaction :y @y-reaction}` into `f` props."
-  [[f cursor {{:keys [db] :or {db app-db}} :opts :as m} subs] owner]
+  [[f cursor {{:keys [db subs] :or {db app-db}} :opts :as m}] owner]
   (reify
     om/IDisplayName
     (display-name [_] "Ampere Om Wrapper")
@@ -134,8 +134,8 @@
       (binding [app-db db]
         (let [rx (cond (vector? subs) (observe owner subs)
                        (map? subs) (utils/map-vals (partial observe owner) subs)
-                       :else (do (utils/error "[:opts :subs] is expected to be a vector or map, got " subs)
-                                 nil))]
+                       (nil? subs) nil
+                       :else (do (utils/error "[:opts :subs] is expected to be a vector or map or nil, got " subs) nil))]
           (om/build* f (merge cursor rx) m))))))
 
 (defn instrument
@@ -145,9 +145,7 @@
   inside render to track subscription.
   It uses `ampere/subscribe` in more om-ish way."
   [f cursor m]
-  (if-let [subs (get-in m [:opts :subs])]
-    (om/build* Wrapper [f cursor (update m :opts dissoc :subs) subs])
-    ::om/pass))
+  (om/build* Wrapper [f cursor (update-in m [:opts :db] #(or % app-db))]))
 
 (defn init! []
   (set! router/*flush-dom* om/render-all))
