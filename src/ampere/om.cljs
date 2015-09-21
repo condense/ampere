@@ -106,6 +106,16 @@
 (defn observe [c v]
   @(om/observe c (upsert-ref c v)))
 
+(def descriptor
+  (om/specify-state-methods!
+   (clj->js
+    (update om/pure-methods
+            :render (fn [f]
+                      (fn []
+                        (this-as this
+                                 (binding [app-db (om/get-state this ::db)]
+                                   (.call f this)))))))))
+
 (defn- Wrapper
   "Wrapper component that tracks reactions and rerender `f` wrappee on their run
    with their values merged into cursor.
@@ -136,7 +146,9 @@
                        (map? subs) (utils/map-vals (partial observe owner) subs)
                        (nil? subs) nil
                        :else (do (utils/error "[:opts :subs] is expected to be a vector or map or nil, got " subs) nil))]
-          (om/build* f (merge cursor rx) m))))))
+          (om/build* f (merge cursor rx) (-> m
+                                             (assoc :descriptor descriptor)
+                                             (assoc-in [:state ::db] db))))))))
 
 (defn instrument
   "Add this as `:instrument` in `om/root` options to enable components having
