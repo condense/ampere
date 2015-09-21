@@ -5,6 +5,7 @@
             [freactive.core :as r :refer [dispose]]
             [goog.object :as obj]
             [ampere.core :refer [subscribe]]
+            [ampere.db :refer [app-db]]
             [ampere.router :as router]
             [ampere.utils :as utils]))
 
@@ -110,30 +111,32 @@
    with their values merged into cursor.
    E. g. `{:opts {:subs {:x [:sub-id1 params] :y [:sub-id2 params}}}`
    will inject `{:x @x-reaction :y @y-reaction}` into `f` props."
-  [[f cursor m subs] owner]
+  [[f cursor {{:keys [db] :or {db app-db}} :opts :as m} subs] owner]
   (reify
     om/IDisplayName
     (display-name [_] "Ampere Om Wrapper")
     om/IWillReceiveProps
     (will-receive-props [_ [_ _ _ next-subs]]
-      (let [subs (om/get-props owner 3)]
-        (when (not= subs next-subs)
-          (cond
-            (vector? subs) (unsub owner subs)
-            (vector? next-subs) (doseq [v subs] (unsub owner v))
-            :else
-            (let [s1 (-> subs vals set)
-                  s2 (-> next-subs vals set)
-                  garbage (clojure.set/difference s1 s2)]
-              (doseq [v garbage]
-                (unsub owner v)))))))
+      (binding [app-db db]
+        (let [subs (om/get-props owner 3)]
+          (when (not= subs next-subs)
+            (cond
+              (vector? subs) (unsub owner subs)
+              (vector? next-subs) (doseq [v subs] (unsub owner v))
+              :else
+              (let [s1 (-> subs vals set)
+                    s2 (-> next-subs vals set)
+                    garbage (clojure.set/difference s1 s2)]
+                (doseq [v garbage]
+                  (unsub owner v))))))))
     om/IRender
     (render [_]
-      (let [rx (cond (vector? subs) (observe owner subs)
-                     (map? subs) (utils/map-vals (partial observe owner) subs)
-                     :else (do (utils/error "[:opts :subs] is expected to be a vector or map, got " subs)
-                               nil))]
-        (om/build* f (merge cursor rx) m)))))
+      (binding [app-db db]
+        (let [rx (cond (vector? subs) (observe owner subs)
+                       (map? subs) (utils/map-vals (partial observe owner) subs)
+                       :else (do (utils/error "[:opts :subs] is expected to be a vector or map, got " subs)
+                                 nil))]
+          (om/build* f (merge cursor rx) m))))))
 
 (defn instrument
   "Add this as `:instrument` in `om/root` options to enable components having
