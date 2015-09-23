@@ -3,32 +3,18 @@
   (:require-macros [freactive.macros :refer [rx]])
   (:require [om.core :as om :include-macros true]
             [freactive.core :as r :refer [dispose]]
-            [goog.object :as obj]
             [ampere.core :refer [subscribe]]
             [ampere.db :refer [app-db]]
             [ampere.router :as router]
             [ampere.utils :as utils]))
 
-(defn get-key [v] (get (meta v) :key v))
-
-(defn sub [c v]
-  (let [rx (subscribe v)]
-    (om/set-state-nr! c [::rx (get-key v)] [v rx])
-    (let [id (or (om/get-state c ::id)
-                 (let [id (gensym)]
-                   (om/set-state-nr! c ::id id)
-                   id))]
-      (add-watch rx id #(om/refresh! c)))
-    rx))
-
-(defn unsub [c v]
-  (let [k (get-key v)]
-    (when-let [[_ rx] (om/get-state c [::rx k])]
-      (remove-watch rx (om/get-state c ::id))
-      (dispose rx)
-      (om/update-state-nr! c ::rx #(dissoc % k)))))
-
-(defn adapt-state [state]
+(defn adapt-state
+  "Wrapper for freactive.core atom for use in `om/root` call.
+  Default Om implementation of root cursor protocols is built on presumption that atom watchers
+  are triggered on any atom update, even if its value didn't change. But freactive.core atoms don't
+  trigger watchers if content remain unchanged after update.
+  Thus wrapper is needed to make rerendering reliable."
+  [state]
   (let [properties (atom {})
         listeners (atom {})
         render-queue (atom #{})]
@@ -63,73 +49,84 @@
               (-empty-queue! [this]
                              (swap! render-queue empty)))))
 
-(extend-protocol om/ICursor
-  r/Cursor
-  (-path [_])
-  (-state [rx] rx)
-  r/ReactiveExpression
-  (-path [_])
-  (-state [rx] rx))
+(defn get-key
+  "Identify subscription by its app-db binding, name and parameters."
+  [v]
+  [app-db v])
 
-(extend-protocol om/IValue
-  r/Cursor
-  (-value [rx] @rx)
-  r/ReactiveExpression
-  (-value [rx] @rx))
+(defn get-id
+  "Identify component for subscription watchers."
+  [c]
+  (or (om/get-state c ::id)
+      (let [id (gensym)]
+        (om/set-state-nr! c ::id id)
+        id)))
 
-(extend-protocol om/IOmRef
-  r/Cursor
-  (-add-dep! [rx _] rx)
-  (-remove-dep! [rx c] (unsub c (obj/get rx "__ampere_v")))
-  (-refresh-deps! [_])
-  (-get-deps [_])
-  r/ReactiveExpression
-  (-add-dep! [rx _] rx)
-  (-remove-dep! [rx c] (unsub c (obj/get rx "__ampere_v")))
-  (-refresh-deps! [_])
-  (-get-deps [_]))
+(defn sub
+  "Refresh component `c` on subscription `v` update."
+  [c v]
+  (let [rx (subscribe v)]
+    (om/set-state-nr! c [::rx (get-key v)] rx)
+    (add-watch rx (get-id c) #(om/refresh! c))
+    rx))
 
-(defn upsert-ref [c v]
-  (if-let [[prev-v rx] (om/get-state c [::rx (get-key v)])]
-    (do
-      (if (= prev-v v)
-        rx
-        ;; if you are passing variable in time args to subscription,
-        ;; name it with static key to help gc:
-        ;; (observe ^{:key :data1} [:data x y z])
-        (let [id (om/get-state c ::id)]
-          (remove-watch rx id)
-          (dispose rx)
-          (sub c v))))
-    (sub c v)))
+(defn unsub* [c rx]
+  (remove-watch rx (get-id c))
+  (dispose rx))
 
-(defn observe [c v]
-  @(om/observe c (upsert-ref c v)))
+(defn unsub
+  "Stop watching subscription `v` and try to GC its instance (if no other watchers left)."
+  [c v]
+  (let [k (get-key v)]
+    (when-let [rx (om/get-state c [::rx k])]
+      (om/update-state-nr! c ::rx #(dissoc % k))
+      (unsub* c rx))))
 
+(defn observe
+  "Used by Wrapper to subscribe to [:opts :subs] and could be directly called by component in render.
+
+  FIXME Unobserve subscriptions made by direct call in render but not used in subsequent renders."
+  [c v]
+  @(or (om/get-state c [::rx (get-key v)]) (sub c v)))
+
+;; FIXME add app-db binding for all lifecycle methods
 (def descriptor
   (om/specify-state-methods!
    (clj->js
-    (update om/pure-methods
-            :render (fn [f]
-                      (fn []
-                        (this-as this
-                                 (binding [app-db (om/get-state this ::db)]
-                                   (.call f this)))))))))
+    (-> om/pure-methods
+        (update :componentWillUnmount
+                (fn [f]
+                  (fn []
+                    (this-as this
+                             (doseq [rx (vals (om/get-state this ::rx))]
+                               (unsub* this rx))
+                             (.call f this)))))
+        (update :render
+                (fn [f]
+                  (fn []
+                    (this-as this
+                             (binding [app-db (or (om/get-state this ::db) app-db)]
+                               (.call f this))))))))))
+
+(def mergeable? (some-fn nil? map?))
 
 (defn- Wrapper
-  "Wrapper component that tracks reactions and rerender `f` wrappee on their run
-   with their values merged into cursor.
-   E. g. `{:opts {:subs {:x [:sub-id1 params] :y [:sub-id2 params}}}`
-   will inject `{:x @x-reaction :y @y-reaction}` into `f` props."
-  [[f cursor {{:keys [db subs] :or {db app-db}} :opts :as m}] owner]
+  "Wrapper component that tracks subscriptions and rerender `f` wrappee on their update with their values merged into cursor.
+   E. g. `{:opts {:subs {:x [:sub-id1 params] :y [:sub-id2 params}}}` will inject `{:x @x-subscription :y @y-subscription}` into `f` props."
+  [props owner]
   (reify
     om/IDisplayName
     (display-name [_] "Ampere Om Wrapper")
     om/IWillReceiveProps
-    (will-receive-props [_ [_ _ _ next-subs]]
-      (binding [app-db db]
-        (let [subs (om/get-props owner 3)]
-          (when (not= subs next-subs)
+    (will-receive-props [_ next-props]
+      (let [{:keys [db subs]} (om/get-props owner)
+            next-subs (:subs next-props)]
+        (binding [app-db db]
+          (cond
+            (not= db (:db next-props))
+            (doseq [v subs] (unsub owner v))
+
+            (not= subs next-subs)
             (cond
               (vector? subs) (unsub owner subs)
               (vector? next-subs) (doseq [v subs] (unsub owner v))
@@ -138,26 +135,40 @@
                     s2 (-> next-subs vals set)
                     garbage (clojure.set/difference s1 s2)]
                 (doseq [v garbage]
-                  (unsub owner v))))))))
+                  (unsub owner v))))
+
+            :else nil))))
     om/IRender
     (render [_]
-      (binding [app-db db]
-        (let [rx (cond (vector? subs) (observe owner subs)
-                       (map? subs) (utils/map-vals (partial observe owner) subs)
-                       (nil? subs) nil
-                       :else (do (utils/error "[:opts :subs] is expected to be a vector or map or nil, got " subs) nil))]
-          (om/build* f (merge cursor rx) (-> m
-                                             (assoc :descriptor descriptor)
-                                             (assoc-in [:state ::db] db))))))))
+      (let [{:keys [f cursor m subs]} props
+            rx (cond (vector? subs) (observe owner subs)
+                     (map? subs) (utils/map-vals (partial observe owner) subs)
+                     (nil? subs) nil
+                     :else (do (utils/error "[:opts :subs] is expected to be either vector or map or nil, but got " subs) nil))]
+        (when-not (or (nil? rx) (mergeable? cursor))
+          (utils/error "cursor is expected to be either nil or map to be merged with subscriptions, but got " cursor))
+        (om/build* f
+                   (if (mergeable? cursor) (merge cursor rx) cursor)
+                   (-> m
+                       (assoc :descriptor descriptor)
+                       (assoc-in [:state ::db] app-db)))))))
 
 (defn instrument
-  "Add this as `:instrument` in `om/root` options to enable components having
-  `:subs` in their `:opts` to subscribe to derived data & merge it into props
-  or calling `(ampere.om/observe owner ^{:key optional-key-if-sub-is-dynamic} subscription-vector)`
-  inside render to track subscription.
-  It uses `ampere/subscribe` in more om-ish way."
+  "Set this fn as `:instrument` in `om/root` options to enable Ampere subscriptions for Om.
+
+  There are two ways to observe subscriptions by Om component:
+
+  * provide `:subs` map under the `:opts` of `om/build` third argument; map must be in the format `{:key subscription-vector ...}`, and subscription value will be merged into component props under the `:key` on render;
+  * call `(ampere.om/observe owner subscription-vector)` inside render to get subscription value (and component's refresh on its change)."
   [f cursor m]
-  (om/build* Wrapper [f cursor (update-in m [:opts :db] #(or % app-db))]))
+  (om/build* Wrapper
+             {:f      f
+              :cursor cursor
+              :m      m
+              :db     app-db
+              :subs   (get-in m [:opts :subs])}
+             {:descriptor descriptor
+              :state      {::db app-db}}))
 
 (defn init! []
   (set! router/*flush-dom* om/render-all))

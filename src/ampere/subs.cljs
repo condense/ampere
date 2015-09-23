@@ -46,12 +46,9 @@
          sub
          (let [sub (handler-fn app-db v)
                sub (freactive.core/rx* #(deref sub) true #(swap! cache dissoc cache-key))]
-           (obj/set sub "__ampere_v" v)
            (swap! cache assoc cache-key sub)
            sub))
-       (let [sub (handler-fn app-db v)]
-         (obj/set sub "__ampere_v" v)
-         sub))))
+       (handler-fn app-db v))))
   ([db v] (binding [app-db db] (subscribe v))))
 
 (defn sample [db v]
