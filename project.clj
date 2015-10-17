@@ -1,4 +1,4 @@
-(defproject condense/ampere "0.2.1"
+(defproject condense/ampere "0.2.2-SNAPSHOT"
   :description "Ampere: UniDirectional Flow for VDOM."
   :url "https://github.com/condense/ampere"
   :license {:name "Eclipse Public License"
