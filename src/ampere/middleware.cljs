@@ -58,9 +58,10 @@
   [handler]
   (fn debug-handler
     [db v]
-    (group "ampere event: " v)
+    (group "ampere event: " (first v))
     (let [new-db (handler db v)
           diff (data/diff db new-db)]
+      (log "event:" v)
       (log "only before: " (first diff))
       (log "only after : " (second diff))
       (groupEnd)
