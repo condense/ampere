@@ -32,6 +32,17 @@
     (nextTick #(close! ch))
     ch))
 
+(defn yield-chan
+  [flush? yield-time now]
+  (cond flush? (do (flush) (timeout 20)) ; wait just over one annimation frame (16ms), to rensure all pending GUI work is flushed to the DOM.
+        (>= now yield-time) (yield))) ; just in case we are handling one dispatch after an other, give the browser back control to do its stuff,
+                                      ; but only once per yield-time, to allow fast handlers to be processed in a batch and do not rerender too frequently
+
+(def clock (if (exists? js/performance) js/performance js/Date))
+
+(defn system-time []
+  (.now clock))
+
 ;;; ## Router loop
 
 (defn router-loop
@@ -49,11 +60,14 @@
        (dispatch ^:flush-dom  [:event-id other params])
    "
   []
-  (go-loop []
-    (let [[db event-v] (<! event-chan)                    ; wait for an event
-          _ (if (:flush-dom (meta event-v))          ; check the event for metadata
-              (do (*flush-dom*) (<! (timeout 20)))   ; wait just over one annimation frame (16ms), to rensure all pending GUI work is flushed to the DOM.
-              (<! (yield)))]                     ; just in case we are handling one dispatch after an other, give the browser back control to do its stuff
+  (go-loop [yield-time 0]
+    (let [[db event-v] (<! event-chan) ; wait for an event
+          yield-time (if-let [ch (yield-chan (:flush-dom (meta event-v)) ; check the event for metadata
+                                             yield-time
+                                             (system-time))]
+                       (do (<! ch)
+                           (+ (system-time) 5))
+                       yield-time)]
       (binding [app-db db]
         (try
           (handle event-v)
@@ -71,7 +85,7 @@
               (router-loop)                                 ; Exception throw will cause termination of go-loop. So, start another.
 
               (throw e))))))                                ; re-throw so the rest of the app's infrastructure (window.onerror?) gets told
-    (recur)))
+    (recur yield-time)))
 
 ;;; Start event processing.
 (router-loop)
