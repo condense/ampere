@@ -50,7 +50,7 @@
   (remove-sink source sink)
   (remove-source sink source))
 
-(deftype RAtom [state meta validator watches sinks lazy?]
+(deftype RAtom [^:mutable state meta validator ^:mutable watches ^:mutable sinks lazy?]
   IReactive
 
   Object
@@ -62,18 +62,18 @@
   IDeref
   (-deref [this]
     (when *sink* (add-link this *sink*))
-    @state)
+    state)
 
   ISource
   (invalidate-sinks [this]
-    (doseq [sink @sinks]
+    (doseq [sink sinks]
       (remove-link this sink)
       (invalidate sink)))
   (add-sink [this sink]
-    (vswap! sinks conj sink)
+    (set! sinks (conj sinks sink))
     this)
   (remove-sink [this sink]
-    (vswap! sinks disj sink)
+    (set! sinks (disj sinks sink))
     this)
 
   IMeta
@@ -81,13 +81,13 @@
 
   IWatchable
   (-notify-watches [this oldval newval]
-    (doseq [[key f] @watches]
+    (doseq [[key f] watches]
       (f key this oldval newval)))
   (-add-watch [this key f]
-    (vswap! watches assoc key f)
+    (set! watches (assoc watches key f))
     this)
   (-remove-watch [this key]
-    (vswap! watches dissoc key)
+    (set! watches (dissoc watches key))
     this)
 
   IHash
@@ -96,29 +96,29 @@
   IPrintWithWriter
   (-pr-writer [this writer opts]
     (-write writer "#<RAtom: ")
-    (pr-writer @state writer opts)
+    (pr-writer state writer opts)
     (-write writer ">"))
 
   IReset
   (-reset! [this new-value]
     (when-not (nil? validator)
       (assert (validator new-value) "Validator rejected reference state"))
-    (let [old-value @state]
+    (let [old-value state]
       (when-not (and lazy? (= old-value new-value))
-        (vreset! state new-value)
+        (set! state new-value)
         (invalidate-sinks this)
         (-notify-watches this old-value new-value))
       new-value))
 
   ISwap
   (-swap! [this f]
-    (reset! this (f @state)))
+    (reset! this (f state)))
   (-swap! [this f x]
-    (reset! this (f @state x)))
+    (reset! this (f state x)))
   (-swap! [this f x y]
-    (reset! this (f @state x y)))
+    (reset! this (f state x y)))
   (-swap! [this f x y xs]
-    (reset! this (apply f @state x y xs))))
+    (reset! this (apply f state x y xs))))
 
 (defn atom
   "Creates and returns an RAtom with an initial value of x and zero or
@@ -136,10 +136,10 @@
   change. If the new state is unacceptable, the validate-fn should
   return false or throw an Error.  If either of these error conditions
   occur, then the value of the atom will not change."
-  ([x] (RAtom. (volatile! x) nil nil (volatile! {}) (volatile! #{}) false))
-  ([x & {:keys [meta validator lazy?]}] (RAtom. (volatile! x) meta validator (volatile! {}) (volatile! #{}) lazy?)))
+  ([x] (RAtom. x nil nil {} #{} false))
+  ([x & {:keys [meta validator lazy?]}] (RAtom. x meta validator {} #{} lazy?)))
 
-(deftype RLens [state getter lazy? teardown setter meta validator watches sinks sources]
+(deftype RLens [^:mutable state getter lazy? teardown setter meta validator ^:mutable watches ^:mutable sinks ^:mutable sources]
   IReactive
 
   Object
@@ -151,27 +151,27 @@
   IDeref
   (-deref [this]
     (when *sink* (add-link this *sink*))
-    (when (= @state ::none) (invalidate this))
-    @state)
+    (when (= state ::none) (invalidate this))
+    state)
 
   ISink
   (invalidate [this]
-    (let [old-value @state
+    (let [old-value state
           new-value (binding [*sink* this] (getter))]
       (when-not (and lazy? (= old-value new-value))
-        (vreset! state new-value)
+        (set! state new-value)
         (invalidate-sinks this)
         (-notify-watches this old-value new-value))))
   (add-source [this source]
-    (vswap! sources conj source)
+    (set! sources (conj sources source))
     this)
   (remove-source [this source]
-    (vswap! sources disj source)
+    (set! sources (disj sources source))
     this)
   (dispose [this]
-    (when (and (empty? @sinks)
-               (empty? @watches))
-      (doseq [source @sources]
+    (when (and (empty? sinks)
+               (empty? watches))
+      (doseq [source sources]
         (remove-sink source this)
         (when (satisfies? ISink source)
           (dispose source)))
@@ -179,16 +179,16 @@
 
   ISource
   (invalidate-sinks [this]
-    (doseq [sink @sinks]
+    (doseq [sink sinks]
       (remove-link this sink)
       (invalidate sink))
     ;; Try to dispose itself if all parent Sinks don't require this Source anymore
     (dispose this))
   (add-sink [this sink]
-    (vswap! sinks conj sink)
+    (set! sinks (conj sinks sink))
     this)
   (remove-sink [this sink]
-    (vswap! sinks disj sink)
+    (set! sinks (disj sinks sink))
     this)
 
   IMeta
@@ -196,13 +196,13 @@
 
   IWatchable
   (-notify-watches [this oldval newval]
-    (doseq [[key f] @watches]
+    (doseq [[key f] watches]
       (f key this oldval newval)))
   (-add-watch [this key f]
-    (vswap! watches assoc key f)
+    (set! watches (assoc watches key f))
     this)
   (-remove-watch [this key]
-    (vswap! watches dissoc key)
+    (set! watches (dissoc watches key))
     (dispose this)
     this)
 
@@ -212,7 +212,7 @@
   IPrintWithWriter
   (-pr-writer [this writer opts]
     (-write writer "#<RLens: ")
-    (pr-writer @state writer opts)
+    (pr-writer state writer opts)
     (-write writer ">"))
 
   IReset
@@ -225,13 +225,13 @@
 
   ISwap
   (-swap! [this f]
-    (reset! this (f @state)))
+    (reset! this (f state)))
   (-swap! [this f x]
-    (reset! this (f @state x)))
+    (reset! this (f state x)))
   (-swap! [this f x y]
-    (reset! this (f @state x y)))
+    (reset! this (f state x y)))
   (-swap! [this f x y xs]
-    (reset! this (apply f @state x y xs))))
+    (reset! this (apply f state x y xs))))
 
 ;; FIXME Ugly API because of backward compatibility with Freactive
 
@@ -239,11 +239,11 @@
   ([getter] (rx* getter true nil))
   ([getter lazy?] (rx* getter lazy? nil))
   ([getter lazy? teardown & {:keys [meta validator setter]}]
-   (RLens. (volatile! ::none)                               ; state
+   (RLens. ::none                                           ; state
            getter lazy? teardown setter meta validator
-           (volatile! {})                                   ; watches
-           (volatile! #{})                                  ; sinks
-           (volatile! #{})                                  ; sources
+           {}                                               ; watches
+           #{}                                              ; sinks
+           #{}                                              ; sources
 )))
 
 (defn cursor* [parent korks]
