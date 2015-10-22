@@ -173,7 +173,7 @@
                (empty? watches))
       (doseq [source sources]
         (remove-sink source this)
-        (when (satisfies? ISink source)
+        #_(when (satisfies? ISink source)
           (dispose source)))
       (when teardown (teardown this))))
 
