@@ -20,18 +20,18 @@
   [handler]
   (fn pure-handler
     [app-db event-vec]
-    (if (not (satisfies? IReactive app-db))
-      (do
-        (if (map? app-db)
-          (warn "ampere: Looks like \"pure\" is in the middleware pipeline twice. Ignoring.")
-          (warn "ampere: \"pure\" middleware not given a Cell.  Got: " app-db))
-        handler)                                 ; turn this into a noop handler
+    (if (satisfies? IReactive app-db)
       (let [db @app-db
             new-db (handler db event-vec)]
         (if (nil? new-db)
           (error "ampere: your pure handler returned nil. It should return the new db state.")
-          (if-not (identical? db new-db)
-            (reset! app-db new-db)))))))
+          (when-not (identical? db new-db)
+            (reset! app-db new-db))))                       ; turn this into a noop handler
+      (do
+        (if (map? app-db)
+          (warn "ampere: Looks like \"pure\" is in the middleware pipeline twice. Ignoring.")
+          (warn "ampere: \"pure\" middleware not given an IReactive.  Got: " app-db))
+        handler))))
 
 (defn log-ex
   "Middleware which catches and prints any handler-generated exceptions to console.

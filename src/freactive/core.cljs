@@ -1,24 +1,46 @@
 (ns freactive.core
-  "TODO:
-   * guarantee equality of cursors with the same parent & path not by fingerprint, but by caching instances
-   * research autodispose possibilities further"
+  "# Ampere reactive mechanics
+
+   *Sources* and *Sinks* are linked into the reactive computational graph.
+   *Source* is responsible for establishing link with its *Sink* when *Sink* evaluates its expression
+   and dereferences *Source* in it. On value change *Source* traverses every linked *Sink,*
+   removes link with it (because *Sink's* expression may be dynamic and may not dereference current *Source* on the next pass),
+   and invalidates it. In its turn *Sink* evaluates its expression on invalidate causing required *Sources* to establish links with it.
+
+   Usually *Source* has an option to invalidate *Sinks* on any touch (eager) or only when value has been changed (lazy).
+   By default `RAtom` is eager and `RLens` is lazy, but behaviour of either is controlled by the `lazy?` parameter.
+
+   `RAtom` (factory function `atom`) behaves just like `cljs.core/Atom`, but represents *Source* capable of linking to *Sinks* and invalidating them on update.
+
+   `RLens` (factory function `rx*`, macro `rx`) takes `getter` parameter which is evaluated on its dereference
+   (actually, value is cached and `getter` is called only on the first dereference and on consecutive invalidations),
+   acting as a *Sink* for any *Source* dereferenced in `getter`. Could be used as *Source* in other reactive expressions.
+   Supports watches like atom.
+
+   ### TODO:
+
+   * research autodispose possibilities further;
+   * move code under ampere ns, because nothing left from initial freactive.core."
   (:refer-clojure :exclude [atom]))
 
-(def ^:dynamic *sink* nil)
+(def ^:dynamic *sink*
+  "Current Source dereferencing context.
+   Sink is responsible for binding it before computing its expression,
+   Source is responsible for establishing link between itself and Sink being dereferenced in Sink's expression."
+  nil)
 
-(defprotocol IReactive
-  (compute [_]))
+(defprotocol IReactive "Marker protocol for sanity checks (like in `ampere.middleware/pure`)")
 
 (defprotocol ISink
-  (invalidate [_])
-  (add-source [_ source])
-  (remove-source [_ source])
-  (dispose [_]))
+  (invalidate [_] "Recompute reactive expression")
+  (add-source [_ source] "Track linked source")
+  (remove-source [_ source] "Stop tracking source")
+  (dispose [_] "Disconnect from sources if not used anymore (no sinks and watches left) to unlock self GCing"))
 
 (defprotocol ISource
-  (add-sink [_ sink])
-  (remove-sink [_ sink])
-  (invalidate-sinks [_]))
+  (add-sink [_ sink] "Add sink to invalidate on change")
+  (remove-sink [_ sink] "Stop invalidating sink on change")
+  (invalidate-sinks [_] "Invalidate linked sinks"))
 
 (defn add-link [source sink]
   (add-sink source sink)
@@ -30,19 +52,16 @@
 
 (deftype RAtom [state meta validator watches sinks lazy?]
   IReactive
-  (compute [_] @state)
 
   Object
-  (equiv [this other]
-    (-equiv this other))
+  (equiv [this other] (-equiv this other))
 
   IEquiv
   (-equiv [o other] (identical? o other))
 
   IDeref
   (-deref [this]
-    (when-let [sink *sink*]
-      (add-link this sink))
+    (when *sink* (add-link this *sink*))
     @state)
 
   ISource
@@ -122,36 +141,27 @@
 
 (deftype RLens [state getter lazy? teardown setter meta validator watches sinks sources]
   IReactive
-  (compute [this]
+
+  Object
+  (equiv [this other] (-equiv this other))
+
+  IEquiv
+  (-equiv [o other] (identical? o other))
+
+  IDeref
+  (-deref [this]
+    (when *sink* (add-link this *sink*))
+    (when (= @state ::none) (invalidate this))
+    @state)
+
+  ISink
+  (invalidate [this]
     (let [old-value @state
           new-value (binding [*sink* this] (getter))]
       (when-not (and lazy? (= old-value new-value))
         (vreset! state new-value)
         (invalidate-sinks this)
-        (-notify-watches this old-value new-value))
-      new-value))
-
-  Object
-  (equiv [this other]
-    (-equiv this other))
-
-  IEquiv
-  (-equiv [o other]
-    (if-let [fp (::fingerprint meta)]
-      (= fp (::fingerprint (-meta other)))
-      (identical? o other)))
-
-  IDeref
-  (-deref [this]
-    (when-let [sink *sink*]
-      (add-link this sink))
-    (if (= @state ::none)
-      (compute this)
-      @state))
-
-  ISink
-  (invalidate [this]
-    (compute this))
+        (-notify-watches this old-value new-value))))
   (add-source [this source]
     (vswap! sources conj source)
     this)
@@ -172,6 +182,7 @@
     (doseq [sink @sinks]
       (remove-link this sink)
       (invalidate sink))
+    ;; Try to dispose itself if all parent Sinks don't require this Source anymore
     (dispose this))
   (add-sink [this sink]
     (vswap! sinks conj sink)
@@ -235,9 +246,10 @@
            (volatile! #{})                                  ; sources
 )))
 
-(defn cursor [parent korks]
+(defn cursor* [parent korks]
   (let [korks (if (coll? korks) korks [korks])]
     (rx* #(get-in @parent korks)
          false nil
-         :setter #(swap! parent assoc-in korks %)
-         :meta {::fingerprint [parent korks]})))
+         :setter #(swap! parent assoc-in korks %))))
+
+(def cursor (memoize cursor*))
