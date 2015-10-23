@@ -33,15 +33,12 @@
     ch))
 
 (defn yield-chan
+  "If `flush?`, then wait just over one annimation frame (16ms), to rensure all pending GUI work is flushed to the DOM.
+   Else, just in case we are handling one dispatch after an other, give the browser back control to do its stuff,
+   but only once per yield-time, to allow fast handlers to be processed in a batch and do not rerender too frequently."
   [flush? yield-time now]
-  (cond flush? (do (flush) (timeout 20)) ; wait just over one annimation frame (16ms), to rensure all pending GUI work is flushed to the DOM.
-        (>= now yield-time) (yield))) ; just in case we are handling one dispatch after an other, give the browser back control to do its stuff,
-                                      ; but only once per yield-time, to allow fast handlers to be processed in a batch and do not rerender too frequently
-
-(def clock (if (exists? js/performance) js/performance js/Date))
-
-(defn system-time []
-  (.now clock))
+  (cond flush? (do (flush) (timeout 20))
+        (>= now yield-time) (yield)))
 
 ;;; ## Router loop
 
