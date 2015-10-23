@@ -173,17 +173,16 @@
                (empty? watches))
       (doseq [source sources]
         (remove-sink source this)
-        #_(when (satisfies? ISink source)
+        (when (satisfies? ISink source)
           (dispose source)))
-      (when teardown (teardown this))))
+      (when teardown (teardown this))
+      (set! state ::none)))
 
   ISource
   (invalidate-sinks [this]
     (doseq [sink sinks]
       (remove-link this sink)
-      (invalidate sink))
-    ;; Try to dispose itself if all parent Sinks don't require this Source anymore
-    (dispose this))
+      (invalidate sink)))
   (add-sink [this sink]
     (set! sinks (conj sinks sink))
     this)
