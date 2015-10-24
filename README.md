@@ -5,6 +5,7 @@
 View-agnostic fork of [re-frame][1]. Adapters for [Om][2] and [Reagent][3] are included.
 For subscriptions uses [freactive.core][4] `rx` which provides very similar functionality to Reagent's `reaction`,
 but allows more control, which helped to build non-leaky adapter for Om (it turned being tricky with `reaction`).
+Note, that starting from 0.3.0 Ampere has own implementation of freactive.core concept. Namespace and API are the same for backward compatibility, but would be eventually dropped in favor of more consistent ones.
 
 ## Why?
 
@@ -14,7 +15,7 @@ And... if Om, why not any another View library? You can use Ampere with Om, Reag
 ## Usage
 
 ```
-[condense/ampere "0.2.1"]
+[condense/ampere "0.3.1"]
 ```
 
 See [re-frame's README][1] for general architecture use, [freactive.core's README][4] for deriving data with its tools.
