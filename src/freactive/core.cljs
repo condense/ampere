@@ -58,6 +58,9 @@
 
   IReactiveExpression
   (compute [this]
+    (when-not (::static meta)
+      (doseq [source sources]
+        (remove-source this source)))
     (let [old-value state
           new-value (with-rx this getter)]
       (when-not (and lazy? (= old-value new-value))
@@ -74,7 +77,9 @@
   (dispose [this]
     (when (empty? watches)
       (doseq [source sources]
-        (remove-source this source))
+        (remove-source this source)
+        (when (satisfies? IReactiveExpression source)
+          (dispose source)))
       (when teardown (teardown this))
       (set! state ::none)))
 
@@ -90,7 +95,6 @@
     this)
   (-remove-watch [this key]
     (set! watches (dissoc watches key))
-    (dispose this)
     this)
 
   IHash
@@ -136,6 +140,7 @@
   (let [korks (if (coll? korks) korks [korks])]
     (rx* #(get-in @parent korks)
          true nil
+         :meta {::static true}
          :setter #(swap! parent assoc-in korks %))))
 
 (def cursor (memoize cursor*))

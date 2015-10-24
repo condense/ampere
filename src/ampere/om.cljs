@@ -1,6 +1,7 @@
 (ns ampere.om
   "Om-specific API"
   (:require [om.core :as om :include-macros true]
+            [freactive.core :refer [dispose]]
             [ampere.core :refer [subscribe]]
             [ampere.db :refer [app-db]]
             [ampere.router :as router]
@@ -69,7 +70,8 @@
     rx))
 
 (defn unsub* [c rx]
-  (remove-watch rx (get-id c)))
+  (remove-watch rx (get-id c))
+  (dispose rx))
 
 (defn unsub
   "Stop watching subscription `v` and try to GC its instance (if no other watchers left)."
