@@ -3,7 +3,7 @@
   (:require [ampere.handlers :refer [handle]]
             [ampere.db :refer [app-db]]
             [ampere.utils :refer [warn error]]
-            [cljs.core.async :refer [chan put! <! timeout close!]])
+            [cljs.core.async :refer [chan put! <! timeout close! poll!]])
   (:import goog.async.nextTick))
 
 (def ^:dynamic *flush-dom*
@@ -20,9 +20,9 @@
 (defn purge-chan
   "Read all pending events from the channel and drop them on the floor."
   []
-  #_(loop []                                                ; TODO commented out until poll! is a part of the core.asyc API
-      (when (go (poll! event-chan))                         ; [progress](https://github.com/clojure/core.async/commit/d8047c0b0ec13788c1092f579f03733ee635c493)
-        (recur))))
+  (loop []
+    (when (go (poll! event-chan))
+      (recur))))
 
 (defn yield
   "Yields control to the browser. Faster than (timeout 0).
