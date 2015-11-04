@@ -13,14 +13,14 @@
 ;;
 ;; Conceptually, the task is to process events in a perpetual loop, one after
 ;; the other, FIFO, calling the right event-handler for each. Being idle when
-;; ther are no events, and firing up when one arrived. Etc. The processing
+;; ther are no events, and firing up when one arrives, etc. The processing
 ;; of events happens "asynchronously" sometime after an event is dispatched.
 ;;
 ;; In practice, browsers only have a single thread of control and we must be
 ;; careful to not hog the CPU.
 ;; When processing events one after another, we must hand back control to
 ;; the browser regularly, so it can redraw, process websockets, etc. But not
-;; too regularly!  If we are in a de-focused tab of the browser, then the app
+;; too regularly!  If we are in a de-focused browser tab, then our app
 ;; will be CPU throttled. Each time we get back control, we have to process all
 ;; queued events, or else something like a bursty websocket (producing events)
 ;; might overwhelm the queue. So there's a balance.
@@ -31,15 +31,17 @@
 ;;
 ;; The strategy is this:
 ;;   - maintain a queue of `dispatched` events.
-;;   - when a new event arrives, "schedule" processing of this queue.
-;;   - when given a chance to process events, do ALL the
-;;     ones currently queued. Don't stop. Hog the CPU. Don't give control
-;;     back to the browser.
-;;   - but if any new events arrive during this processing run, don't do
-;;     them immediately. Yield first to the browser, and do these new events
-;;     in the next processing run.  That way we drain the queue, but we
+;;   - when a new event arrives, "schedule" processing of this queue using
+;;     goog.async.nextTick, which means it will happen "very soon".
+;;   - when processing events, do ALL the ones currently queued. Don't stop.
+;;     Don't yield to the browser. Hog that CPU.
+;;   - but if any new events arrive during this cycle of processing,
+;;     don't do them immediately. Leave then queued. Yield first to the
+;;     browser, and do these new events in the next processing cycle.
+;;     That way we drain the queue up to a point, but we
 ;;     never hog the CPU forever.  In particular, we handle the case
-;;     where handling one event will begat another event.
+;;     where handling one event will begat another event. The freshly begated
+;;     event will be handled next cycle, with yielding in between.
 ;;   - In some cases, an event should not be run until after the GUI has been
 ;;     updated. Ie. after the next reagent animation frame. In such a case,
 ;;     the event should be dispatched with :flush-dom metadata like this:
@@ -49,8 +51,9 @@
 ;;     ones behind it.
 ;;
 ;; Implementation
-;;   - this queue can be in a few different states. So it is modeled explicitly
-;;     as a FSM. See -fsm-trigger below for the states and transitions.
+;;   - queue processing can be in a number of states: scheduled, running, paused
+;;     etc. So it is modeled explicitly as a FSM.
+;;     See "-fsm-trigger" (below) for the states and transitions.
 ;;   - the scheduling is done via "goog.async.nextTick" which is pretty quick
 ;;   - when the event has :flush-dom we schedule via after calling *flush-dom*
 ;;     which will run after event processing after the next animation frame.
@@ -70,7 +73,7 @@
   (-run-queue [this])
   (-pause-run [this])
   (-exception [this ex])
-  (-resume-run [this]))
+  (-begin-resume [this]))
 
 
 (deftype EventQueue [^:mutable fsm-state ^:mutable queue]
@@ -121,21 +124,21 @@
     (let [event-v (peek queue)
           m       (meta event-v)
           later   (cond
-                    (:flush-dom m) #(do (*flush-dom*) (%)) ;; FIXME run after next animation frame
+                    (:flush-dom m) #(do (*flush-dom*) (%)) ;; REVIEW after next animation frame
                     (:yield m)     nextTick)]              ;; almost immediately
-      (later #(-fsm-trigger this :resume-run nil))))
+      (later #(-fsm-trigger this :begin-resume nil))))
 
-  (-resume-run
+  (-begin-resume
     [this]
     (-process-1st-event this)               ;; do the event which paused processing
-    (-fsm-trigger this :done-paused nil))   ;; do the rest of the queued events
+    (-fsm-trigger this :finish-resume nil)) ;; do the rest of the queued events
 
   (-fsm-trigger
     [this trigger arg1]
 
     ;; work out new FSM state and action function for the transition
     (let [[new-state action-fn]
-          (condp = [fsm-state trigger]
+          (case [fsm-state trigger]
 
             ; Here is the FSM
             ;[current-state :trigger]  [:new-state  action-fn]
@@ -155,13 +158,13 @@
                                       [:scheduled  #(-run-next-tick this)])
 
             ;; event processing is paused - probably by :flush-dom metadata
-            [:paused :add-event  ]  [:paused    #(-add-event this arg1)]
-            [:paused :resume-run ]  [:do-paused #(-resume-run this)]
+            [:paused :add-event    ]  [:paused   #(-add-event this arg1)]
+            [:paused :begin-resume ]  [:resuming #(-begin-resume this)]
 
             ;; processing an event which previously caused the queue to be paused
-            [:do-paused :add-event  ] [:paused     #(-add-event this arg1)]
-            [:do-paused :exception  ] [:quiescent  #(-exception this arg1)]
-            [:do-paused :done-paused] [:running    #(-run-queue this)]
+            [:resuming :add-event    ] [:resuming  #(-add-event this arg1)]
+            [:resuming :exception    ] [:quiescent #(-exception this arg1)]
+            [:resuming :finish-resume] [:running   #(-run-queue this)]
 
             (throw (str "re-frame: state transition not found. " fsm-state " " trigger)))]
 
@@ -189,8 +192,7 @@
   "
   [event-v]
   (enqueue event-queue event-v)
-  nil)                                                      ;; Ensure nil return. See https://github.com/Day8/re-frame/wiki/Beware-Returning-False
+  ;; Ensure nil return. See https://github.com/Day8/re-frame/wiki/Beware-Returning-False
+  nil)
 
 (def dispatch-sync dispatch)
-
-
