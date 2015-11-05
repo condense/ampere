@@ -5,7 +5,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
 
   :dependencies [[org.clojure/clojure "1.7.0"]
-                 [org.clojure/clojurescript "1.7.145" :scope "provided"]
+                 [org.clojure/clojurescript "1.7.166" :scope "provided"]
                  [org.omcljs/om "0.9.0" :scope "provided"]
                  [reagent "0.5.1" :scope "provided"]]
 
