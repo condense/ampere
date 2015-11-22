@@ -1,7 +1,6 @@
 (ns ampere.subs
   (:require-macros [freactive.macros :refer [rx]])
-  (:require freactive.core
-            [goog.object :as obj]
+  (:require [freactive.core :as rx]
             [ampere.db :refer [app-db]]
             [ampere.utils :refer [first-in-vector warn error]]))
 
@@ -35,6 +34,14 @@
 (defn path-handler [db v]
   (rx (get-in @db v)))
 
+(defn inject-teardown [rx f]
+  (let [g (.-teardown rx)]
+    (set! (.-teardown rx)
+          (fn [rx]
+            (when g (g rx))
+            (f rx)))
+    rx))
+
 (defn subscribe
   "Returns a reaction which observes a part of app-db."
   ([v]
@@ -44,8 +51,7 @@
      (if *cache?*
        (if-let [sub (get @cache cache-key)]
          sub
-         (let [sub (handler-fn app-db v)
-               sub (freactive.core/rx* #(deref sub) true #(swap! cache dissoc cache-key))]
+         (let [sub (inject-teardown (handler-fn app-db v) #(swap! cache dissoc cache-key))]
            (swap! cache assoc cache-key sub)
            sub))
        (handler-fn app-db v))))
@@ -54,4 +60,4 @@
 (defn sample [db v]
   "Sample subscription against immutable db value."
   (binding [*cache?* false]
-    @(subscribe (freactive.core/atom db) v)))
+    @(subscribe (rx/atom db) v)))
