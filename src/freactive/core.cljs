@@ -1,8 +1,5 @@
 (ns freactive.core
-  (:refer-clojure :exclude [atom])
-  (:require [clojure.set :as s]))
-
-(def conj* (fnil conj #{}))
+  (:refer-clojure :exclude [atom]))
 
 (defprotocol IReactiveSource
   (get-rank [_])
@@ -12,52 +9,48 @@
 
 (defprotocol IReactiveExpression
   (compute [_])
-  (uncompute [_])
+  (clean [_])
   (add-source [_ source])
   (remove-source [_ source]))
 
 (def ^:dynamic *rx* nil)                                    ; current parent expression
 (def ^:dynamic *rank* nil)                                  ; highest rank met during expression compute
-(def ^:dynamic *queue* nil)                                 ; dirty sources and sinks
+(def ^:dynamic *queue* nil)                                 ; dirty sinks
 
-(declare propagate!)
+(defn compare-by [keyfn]
+  (fn [x y]
+    (compare (keyfn x) (keyfn y))))
 
-(defn watch [_ source o n]
-  (when (not= o n)
-    (if *queue*
-      (vswap! *queue* update (get-rank source) conj* source)
-      (propagate! (volatile! {(get-rank source) #{source}})))))
+(defn rank-hash [x]
+  [(get-rank x) (hash x)])
+
+(def empty-queue (sorted-set-by (compare-by rank-hash)))
+
+(defn propagate* [queue]
+  (binding [*rx* nil *rank* nil]                            ; try to be foolproof
+    (loop [queue queue dirty '()]
+      (if-let [x (first queue)]
+        (let [queue (disj queue x)
+              dirty (conj dirty x)]
+          (if (= @x (compute x))
+            (recur queue dirty)
+            (recur (into queue (get-sinks x)) dirty)))
+        dirty))))
+
+(defn propagate! [queue]
+  (doseq [sink (propagate* queue)]
+    (clean sink)))
 
 (defn register [source]
   (when *rx*                                                ; *rank* too
-    (add-watch source ::rx watch)
     (add-sink source *rx*)
     (add-source *rx* source)
     (vswap! *rank* max (get-rank source))))
 
-(defn level-up! [queue rank]
-  (reduce
-    (fn [q sink]
-      (update q (get-rank sink) conj* sink))
-    (dissoc queue rank)
-    (apply s/union (map get-sinks (get queue rank)))))
-
-(defn propagate! [queue]
-  (loop [rank 0 processed '()]
-    (vswap! queue level-up! rank)
-    (if-let [rank (apply min (keys @queue))]
-      (do (binding [*queue* queue]
-            (doseq [sink (get @queue rank)]
-              (compute sink)
-              (conj processed sink)))
-          (recur rank processed))
-      (doseq [sink processed]
-        (uncompute sink)))))
-
 (defn dosync* [f]
-  (let [queue (or *queue* (volatile! {}))]
+  (let [queue (or *queue* (volatile! empty-queue))]
     (binding [*queue* queue] (f))
-    (propagate! queue)))
+    (propagate! @queue)))
 
 (deftype ReactiveExpression [getter setter teardown meta validator
                              ^:mutable state ^:mutable watches
@@ -87,21 +80,21 @@
       (remove-sink source this))
     (set! sources #{})
     (let [old-value state
-          r (volatile! -1)
+          r (volatile! 0)
           new-value (binding [*rx* this
                               *rank* r]
                       (getter))]
       (set! rank (inc @r))
       (when (not= old-value new-value)
         (set! state new-value)
-        (-notify-watches this old-value new-value))))
-  (uncompute [this]
-    (when (and (empty? sinks)
-               (empty? (dissoc watches ::rx)))
+        (-notify-watches this old-value new-value))
+      new-value))
+  (clean [this]
+    (when (and (empty? sinks) (empty? watches))
       (doseq [source sources]
         (remove-sink source this)
         (when (satisfies? IReactiveExpression source)
-          (uncompute source)))
+          (clean source)))
       (set! sources #{})
       (set! state ::thunk)
       (when teardown (teardown))))
@@ -123,7 +116,7 @@
     this)
   (-remove-watch [this key]
     (set! watches (dissoc watches key))
-    (uncompute this)
+    (clean this)
     this)
 
   IHash
@@ -153,6 +146,12 @@
   (-swap! [this f x y xs]
     (reset! this (apply f state x y xs))))
 
+(defn watch [_ source o n]
+  (when (not= o n)
+    (if *queue*
+      (vswap! *queue* into (get-sinks source))
+      (->> source get-sinks (into empty-queue) propagate!))))
+
 (defn atom [x & m]
   (let [sinks (volatile! #{})]
     (specify! (apply cljs.core/atom x m)
@@ -166,6 +165,7 @@
       IDeref
       (-deref [this]
         (register this)
+        (add-watch this ::rx watch)
         (.-state this)))))
 
 ;; FIXME Ugly API because of backward compatibility with Freactive

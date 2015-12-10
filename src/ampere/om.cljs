@@ -6,47 +6,6 @@
             [ampere.router :as router]
             [ampere.utils :as utils]))
 
-(defn adapt-state
-  "Wrapper for freactive.core atom for use in `om/root` call.
-  Default Om implementation of root cursor protocols is built on presumption that atom watchers
-  are triggered on any atom update, even if its value didn't change. But freactive.core atoms don't
-  trigger watchers if content remain unchanged after update.
-  Thus wrapper is needed to make rerendering reliable."
-  [state]
-  (let [properties (atom {})
-        listeners (atom {})
-        render-queue (atom #{})]
-    (specify! state
-              om/IRootProperties
-              (-set-property! [_ id k v]
-                              (swap! properties assoc-in [id k] v))
-              (-remove-property! [_ id k]
-                                 (swap! properties dissoc id k))
-              (-remove-properties! [_ id]
-                                   (swap! properties dissoc id))
-              (-get-property [_ id k]
-                             (get-in @properties [id k]))
-              om/INotify
-              (-listen! [this key tx-listen]
-                        (when-not (nil? tx-listen)
-                          (swap! listeners assoc key tx-listen))
-                        this)
-              (-unlisten! [this key]
-                          (swap! listeners dissoc key)
-                          this)
-              (-notify! [this tx-data root-cursor]
-                        (doseq [[_ f] @listeners]
-                          (f tx-data root-cursor))
-                        this)
-              om/IRenderQueue
-              (-get-queue [this] @render-queue)
-              (-queue-render! [this c]
-                              (when-not (contains? @render-queue c)
-                                (swap! render-queue conj c)
-                                (swap! this update ::c (fnil inc 0))))
-              (-empty-queue! [this]
-                             (swap! render-queue empty)))))
-
 (defn get-key
   "Identify subscription by its app-db binding, name and parameters."
   [v]
