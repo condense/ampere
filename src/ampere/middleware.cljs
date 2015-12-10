@@ -1,6 +1,6 @@
 (ns ampere.middleware
   (:require
-   [freactive.core :refer [IReactive]]
+   [freactive.core :refer [IReactiveSource]]
    [ampere.undo :refer [store-now!]]
    [ampere.utils :refer [warn log group groupEnd error]]
    [clojure.data :as data]))
@@ -20,7 +20,7 @@
   [handler]
   (fn pure-handler
     [app-db event-vec]
-    (if (satisfies? IReactive app-db)
+    (if (satisfies? IReactiveSource app-db)
       (let [db @app-db
             new-db (handler db event-vec)]
         (if (nil? new-db)
@@ -30,7 +30,7 @@
       (do
         (if (map? app-db)
           (warn "ampere: Looks like \"pure\" is in the middleware pipeline twice. Ignoring.")
-          (warn "ampere: \"pure\" middleware not given an IReactive.  Got: " app-db))
+          (warn "ampere: \"pure\" middleware not given an IReactiveSource.  Got: " app-db))
         handler))))
 
 (defn log-ex
