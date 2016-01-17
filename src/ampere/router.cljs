@@ -89,11 +89,12 @@
 
   (-process-1st-event
     [this]
-    (let [event-v (peek queue)]
-      (try
-        (handle event-v)
-        (catch :default ex
-          (-fsm-trigger this :exception ex)))
+    (let [[db event-v] (peek queue)]
+      (binding [app-db db]
+        (try
+          (handle event-v)
+          (catch :default ex
+            (-fsm-trigger this :exception ex))))
       (set! queue (pop queue))))
 
   (-run-next-tick
@@ -113,7 +114,7 @@
       (loop [n queue-length]
         (if (zero? n)
           (-fsm-trigger this :finish-run nil)
-          (let [event-v (peek queue)]
+          (let [[_ event-v] (peek queue)]
             (if (some #{:flush-dom :yield} (keys (meta event-v)))
               (-fsm-trigger this :pause-run nil)
               (do (-process-1st-event this)
@@ -121,7 +122,7 @@
 
   (-pause-run
     [this]
-    (let [event-v (peek queue)
+    (let [[_ event-v] (peek queue)
           m       (meta event-v)
           later   (cond
                     (:flush-dom m) #(do (*flush-dom*) (%)) ;; REVIEW after next animation frame
@@ -190,9 +191,10 @@
   Usage example:
      (dispatch [:delete-item 42])
   "
-  [event-v]
-  (enqueue event-queue event-v)
-  ;; Ensure nil return. See https://github.com/Day8/re-frame/wiki/Beware-Returning-False
-  nil)
+  ([db event-v]
+   (enqueue event-queue [db event-v])
+    ;; Ensure nil return. See https://github.com/Day8/re-frame/wiki/Beware-Returning-False
+   nil)
+  ([event-v] (dispatch app-db event-v)))
 
 (def dispatch-sync dispatch)
