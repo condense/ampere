@@ -4,7 +4,8 @@
             [ampere.subs :as subs]
             [ampere.router :as router]
             [ampere.utils :as utils]
-            [ampere.middleware :as middleware]))
+            [ampere.middleware :as middleware]
+            [ampere.db :refer [app-db]]))
 
 (def dispatch router/dispatch)
 (def dispatch-sync router/dispatch-sync)
@@ -50,3 +51,11 @@
       (register-handler id (-> v butlast vec) (last v))))
   (doseq [[id sub] subs]
     (register-sub id sub)))
+
+(defn bind-fn
+  "Wrap your async handlers (of DOM, AJAX events) in `bind-fn` to preserve `app-db` context"
+  [f]
+  (let [db app-db]
+    (fn [& args]
+      (binding [app-db db]
+        (apply f args)))))
