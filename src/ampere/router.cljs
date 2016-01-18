@@ -75,7 +75,6 @@
   (-exception [this ex])
   (-begin-resume [this]))
 
-
 (deftype EventQueue [^:mutable fsm-state ^:mutable queue]
   IEventQueue
 
@@ -151,20 +150,20 @@
             [:scheduled :begin-run] [:running   #(-run-queue this)]
 
             ;; processing one event after another
-            [:running :add-event ]  [:running   #(-add-event this arg1)]
-            [:running :pause-run ]  [:paused    #(-pause-run this)]
-            [:running :exception ]  [:quiescent #(-exception this arg1)]
+            [:running :add-event]  [:running   #(-add-event this arg1)]
+            [:running :pause-run]  [:paused    #(-pause-run this)]
+            [:running :exception]  [:quiescent #(-exception this arg1)]
             [:running :finish-run]  (if (empty? queue)       ;; FSM guard
                                       [:quiescent]
                                       [:scheduled  #(-run-next-tick this)])
 
             ;; event processing is paused - probably by :flush-dom metadata
-            [:paused :add-event    ]  [:paused   #(-add-event this arg1)]
-            [:paused :begin-resume ]  [:resuming #(-begin-resume this)]
+            [:paused :add-event]  [:paused   #(-add-event this arg1)]
+            [:paused :begin-resume]  [:resuming #(-begin-resume this)]
 
             ;; processing an event which previously caused the queue to be paused
-            [:resuming :add-event    ] [:resuming  #(-add-event this arg1)]
-            [:resuming :exception    ] [:quiescent #(-exception this arg1)]
+            [:resuming :add-event] [:resuming  #(-add-event this arg1)]
+            [:resuming :exception] [:quiescent #(-exception this arg1)]
             [:resuming :finish-resume] [:running   #(-run-queue this)]
 
             (throw (str "re-frame: state transition not found. " fsm-state " " trigger)))]
@@ -180,7 +179,6 @@
 ;;
 
 (def event-queue (->EventQueue :quiescent #queue []))
-
 
 ;; ---------------------------------------------------------------------------
 ;; Dispatching
