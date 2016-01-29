@@ -138,12 +138,16 @@
 
   ISwap
   (-swap! [this f]
+    (when (= state ::thunk) (compute this))
     (reset! this (f state)))
   (-swap! [this f x]
+    (when (= state ::thunk) (compute this))
     (reset! this (f state x)))
   (-swap! [this f x y]
+    (when (= state ::thunk) (compute this))
     (reset! this (f state x y)))
   (-swap! [this f x y xs]
+    (when (= state ::thunk) (compute this))
     (reset! this (apply f state x y xs))))
 
 (defn watch [_ source o n]
