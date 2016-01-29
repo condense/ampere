@@ -17,18 +17,22 @@
 (defn remove-keys [pred m]
   (if m (reduce-kv (fn [m k _] (if (pred k) (dissoc m k) m)) m m) {}))
 
-(defn invalidate [& ks]
-  (if (empty? ks)
-    (reset! cache {})
-    (let [ks (set ks)]
-      (swap! cache (partial remove-keys (comp ks first second))))))
+(defn when-contains [m k f & args]
+  (if (contains? m k)
+    (apply f m k args)
+    m))
+
+(defn invalidate
+  ([] (invalidate app-db))
+  ([db] (swap! cache dissoc db))
+  ([db v] (swap! cache when-contains db update dissoc v)))
 
 (defn register
   "Registers a handler function for an id."
   [key-v handler-fn]
   (if (contains? @key->fn key-v)
     (warn "ampere: overwriting subscription-handler for: " key-v))   ;; allow it, but warn.
-  (invalidate key-v)
+  (invalidate app-db key-v)
   (swap! key->fn assoc key-v handler-fn))
 
 (defn path-handler [db v]
@@ -49,10 +53,10 @@
          handler-fn (get @key->fn key-v path-handler)
          cache-key [app-db v]]
      (if *cache?*
-       (if-let [sub (get @cache cache-key)]
+       (if-let [sub (get-in @cache cache-key)]
          sub
-         (let [sub (inject-teardown (handler-fn app-db v) #(swap! cache dissoc cache-key))]
-           (swap! cache assoc cache-key sub)
+         (let [sub (inject-teardown (handler-fn app-db v) #(swap! cache when-contains (cache-key 0) update dissoc (cache-key 1)))]
+           (swap! cache assoc-in cache-key sub)
            sub))
        (handler-fn app-db v))))
   ([db v] (binding [app-db db] (subscribe v))))
