@@ -1,11 +1,11 @@
-(defproject condense/ampere "0.3.3"
+(defproject condense/ampere "0.3.4-SNAPSHOT"
   :description "Ampere: UniDirectional Flow for VDOM."
   :url "https://github.com/condense/ampere"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
 
-  :dependencies [[org.clojure/clojure "1.7.0"]
-                 [org.clojure/clojurescript "1.7.189" :scope "provided"]
+  :dependencies [[org.clojure/clojure "1.8.0"]
+                 [org.clojure/clojurescript "1.7.228" :scope "provided"]
                  [org.omcljs/om "0.9.0" :scope "provided"]
                  [reagent "0.5.1" :scope "provided"]]
 
