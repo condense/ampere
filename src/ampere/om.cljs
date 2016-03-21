@@ -45,6 +45,18 @@
   [c v]
   @(or (om/get-state c [::rx (get-key v)]) (sub c v)))
 
+(defn lifecycle-bind-app-db [f]
+  (fn [& args]
+    (this-as this
+      (binding [app-db (or (om/get-state this ::db) app-db)]
+        (.apply f this (into-array args))))))
+
+(defn wrap-lifecycle [methods k]
+  (update methods k lifecycle-bind-app-db))
+
+(defn wrap-lifecycles [methods ks]
+  (reduce wrap-lifecycle methods ks))
+
 ;; FIXME add app-db binding for all lifecycle methods
 (def descriptor
   (om/specify-state-methods!
@@ -57,12 +69,10 @@
                              (doseq [rx (vals (om/get-state this ::rx))]
                                (unsub* this rx))
                              (.call f this)))))
-        (update :render
-                (fn [f]
-                  (fn []
-                    (this-as this
-                             (binding [app-db (or (om/get-state this ::db) app-db)]
-                               (.call f this))))))))))
+        (wrap-lifecycles [:shouldComponentUpdate
+                          :componentWillMount :componentDidMount
+                          :componentWillUpdate :componentDidUpdate
+                          :componentWillReceiveProps :render])))))
 
 (def mergeable? (some-fn nil? map?))
 
