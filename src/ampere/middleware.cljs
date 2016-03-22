@@ -2,7 +2,7 @@
   (:require
    [freactive.core :refer [IReactiveSource]]
    [ampere.undo :refer [store-now!]]
-   [ampere.utils :refer [warn log group groupEnd error]]
+   [ampere.utils :refer [warn info fine error]]
    [clojure.data :as data]))
 
 ;;; See docs in the [Wiki](https://github.com/Day8/re-frame/wiki)
@@ -58,13 +58,12 @@
   [handler]
   (fn debug-handler
     [db v]
-    (group "ampere event: " (first v))
+    (info "event: " (first v))
     (let [new-db (handler db v)
           diff (data/diff db new-db)]
-      (log "event:" v)
-      (log "only before: " (first diff))
-      (log "only after : " (second diff))
-      (groupEnd)
+      (fine "event args:" (rest v))
+      (fine "only before: " (first diff))
+      (fine "only after : " (second diff))
       new-db)))
 
 (defn trim-v

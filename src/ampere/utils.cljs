@@ -1,20 +1,27 @@
 (ns ampere.utils
-  (:require [clojure.set :refer [difference]]))
+  (:require [clojure.set :refer [difference]]
+            [goog.log :as glog]
+            [goog.debug.Logger.Level :as lvl])
+  (:import [goog.debug Console]))
+
+
+(defonce *logger*
+  (when ^boolean goog.DEBUG
+    (.setCapturing (Console.) true)
+    (glog/getLogger "ampere")))
 
 ;;; ## Logging
 ;;;
-;;; Ampere internally uses a set of logging functions which, by default,
-;;; print to js/console.
+;;; Ampere internally uses a set of logging functions which, by default, make use of goog.log
 ;;; Use set-loggers! if you want to change this default behaviour.
 ;;; In production environment, you may want to capture exceptions and POST
-;;; them somewhere.  to , you might want to override the way that exceptions are
+;;; them somewhere. To do that, you might want to override the way that exceptions are
 ;;; handled by overridding "error"
 (def default-loggers
-  {:log      #(.log js/console %)
-   :warn     #(.warn js/console %)
-   :error    #(.error js/console %)
-   :group    #(if (.-groupCollapsed js/console) (.groupCollapsed js/console %) (.log js/console %)) ;; group does not exist  < IE 11
-   :groupEnd #(when (.-groupEnd js/console) (.groupEnd js/console))}) ;; groupEnd does not exist  < IE 11
+  {:fine     #(glog/fine *logger* %)
+   :info     #(glog/info *logger* %)
+   :warn     #(glog/warning *logger* %)
+   :error    #(glog/error *logger* %) })
 
 (def loggers
   "Holds the current set of loggers."
@@ -27,10 +34,18 @@
   (assert (empty? (difference (set (keys new-loggers)) (set (keys default-loggers)))) "Unknown keys in new-loggers")
   (swap! loggers merge new-loggers))
 
-(defn log [& args] ((:log @loggers) (apply str args)))
+(defn set-logger-level! [level]
+  (when *logger*
+    (.setLevel *logger*
+               (case level
+                 :fine lvl/FINE
+                 :info lvl/INFO
+                 :warn lvl/WARNING
+                 :error lvl/SEVERE))))
+
+(defn fine [& args] ((:fine @loggers) (apply str args)))
+(defn info [& args] ((:info @loggers) (apply str args)))
 (defn warn [& args] ((:warn @loggers) (apply str args)))
-(defn group [& args] ((:group @loggers) (apply str args)))
-(defn groupEnd [& args] ((:groupEnd @loggers) (apply str args)))
 (defn error [& args] ((:error @loggers) (apply str args)))
 
 ;;; ## Misc

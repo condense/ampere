@@ -11,6 +11,8 @@
 
   :plugins [[funcool/codeina "0.3.0" :exclusions [org.clojure/clojure]]]
 
+  :cljsbuild {:builds {:dev {:source-paths ["src"]}}}
+
   :codeina {:sources ["src"]
             :reader :clojurescript
             :target "docs/api"
