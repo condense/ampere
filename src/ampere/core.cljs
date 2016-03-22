@@ -25,7 +25,6 @@
 (def enrich middleware/enrich)
 (def trim-v middleware/trim-v)
 (def after middleware/after)
-(def log-ex middleware/log-ex)
 
 (def set-loggers!
   "Ampere uses the logging functions: warn, log, error, group and groupEnd
@@ -45,12 +44,15 @@
   ([id middleware handler]
    (handlers/register-base id [pure middleware] handler)))
 
-(defn init! [{:keys [handlers subs] :as config}]
+(defn init! [{:keys [handlers subs db logger-level] :as config}]
   (doseq [[id & middleware+handler] handlers]
     (let [v (flatten middleware+handler)]
       (register-handler id (-> v butlast vec) (last v))))
   (doseq [[id sub] subs]
-    (register-sub id sub)))
+    (register-sub id sub))
+  (swap! app-db merge db)
+  (when logger-level
+    (utils/set-logger-level! logger-level)))
 
 (defn bind-fn
   "Wrap your async handlers (of DOM, AJAX events) in `bind-fn` to preserve `app-db` context"
