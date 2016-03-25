@@ -61,3 +61,9 @@
       (binding [app-db db
                 router/*provenance* prov]
         (apply f args)))))
+
+(defn callback
+  "Return a callback fn which will dispatch event-v with any callback args appended."
+  [event-v]
+  (bind-fn (fn [& args]
+             (dispatch (into event-v args)))))

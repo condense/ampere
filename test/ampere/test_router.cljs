@@ -68,3 +68,20 @@
           (ampere/register-handler :test3 test3)
           (is (= [] *provenance*))
           (ampere/dispatch [:test3])))))
+
+
+(deftest test-callback
+  (async done
+    (let [done #(js/setTimeout done)
+          test3-callback (fn [db event-v]
+                           (is (= [[:test3] [:test3-callback :an-arg]] *provenance*))
+                           (done))
+          test3 (fn [db [_]]
+                  (is (= [[:test3]] *provenance*))
+                  (js/setTimeout (ampere/callback [:test3-callback]) 0 :an-arg)
+                  db)]
+      (do (handlers/clear-handlers!)
+          (ampere/register-handler :test3 test3)
+          (ampere/register-handler :test3-callback test3-callback)
+          (is (= [] *provenance*))
+          (ampere/dispatch [:test3])))))
