@@ -27,7 +27,7 @@ See [re-frame's README][1] for general architecture use, [freactive.core's READM
 
 You may also want `npm install karma-cli -g` to have easy access to `karma` on the command line.
 
-`lein cljsbuild test once` will build the code for testing.  (`lein once` and `lein auto` are aliases for convenience.)
+`lein cljsbuild once test` will build the code for testing.  (`lein once` and `lein auto` are aliases for convenience.)
 
 `karma start --single-run --reporters junit,dots` will startup karma and run tests.
 
@@ -35,7 +35,7 @@ For development convienience you can setup so that code automatically recompiles
  
 ```
 karma start --reporters junit,dots &
-lein cljsbuild test auto
+lein cljsbuild auto test
 ```
 
 ## Licence
