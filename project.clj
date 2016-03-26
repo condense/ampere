@@ -9,11 +9,43 @@
                  [org.omcljs/om "0.9.0" :scope "provided"]
                  [reagent "0.5.1" :scope "provided"]]
 
+  :profiles {:debug {:debug true}
+             :dev   {:dependencies [[karma-reporter "0.3.0"]]
+                     :plugins      [[lein-cljsbuild "1.1.1"]
+                                    [lein-npm "0.6.1"]
+                                    [lein-figwheel "0.3.8"]]}}
+
+  :clean-targets [:target-path
+                  "run/compiled/demo"]
+
+  :resource-paths ["run/resources"]
+
+  :jvm-opts       ["-Xmx1g" "-XX:+UseConcMarkSweepGC"]
+
   :plugins [[funcool/codeina "0.3.0" :exclusions [org.clojure/clojure]]]
 
-  :cljsbuild {:builds {:dev {:source-paths ["src"]}}}
+  :source-paths ["src"]
 
-  :codeina {:sources ["src"]
-            :reader :clojurescript
-            :target "docs/api"
-            :defaults {:doc/format :markdown}})
+  :test-paths ["test"]
+
+  :cljsbuild {:builds {:dev  {:source-paths ["src"]}
+                       :test {:source-paths ["src" "test"]
+                              :compiler     {:output-to     "run/compiled/test.js"
+                                             :source-map    "run/compiled/test.js.map"
+                                             :output-dir    "run/compiled/test"
+                                             :optimizations :simple
+                                             :pretty-print  true}}}}
+
+  ;; because of https://github.com/karma-runner/karma/issues/1746  we include our own fork of karma
+  :npm {:dependencies [[karma "https://github.com/danielcompton/karma/archive/v0.13.19.tar.gz"]
+                       [karma-cljs-test "0.1.0"]
+                       [karma-chrome-launcher "0.2.0"]
+                       [karma-junit-reporter "0.3.8"]]}
+
+  :codeina {:sources  ["src"]
+            :reader   :clojurescript
+            :target   "docs/api"
+            :defaults {:doc/format :markdown}}
+
+  :aliases {"auto"        ["do" "clean," "cljsbuild" "auto" "test,"]
+            "once"        ["do" "clean," "cljsbuild" "once" "test,"] })

@@ -9,6 +9,8 @@
   Must be set on app init by adapter."
   #(warn "ampere.router/*flush-dom* is not set, may be you forgot to init view adapter?"))
 
+(def ^:dynamic *provenance* [])
+
 ;; -- Router Loop ------------------------------------------------------------
 ;;
 ;; Conceptually, the task is to process events in a perpetual loop, one after
@@ -89,7 +91,8 @@
   (-process-1st-event
     [this]
     (let [[db event-v] (peek queue)]
-      (binding [app-db db]
+      (binding [app-db db
+                *provenance* (-> event-v meta ::provenance)]
         (try
           (handle event-v)
           (catch :default ex
@@ -190,7 +193,9 @@
      (dispatch [:delete-item 42])
   "
   ([db event-v]
-   (enqueue event-queue [db event-v])
+   (let [prov (conj *provenance* event-v)
+         event-v (vary-meta event-v assoc ::provenance prov)]
+     (enqueue event-queue [db event-v]))
     ;; Ensure nil return. See https://github.com/Day8/re-frame/wiki/Beware-Returning-False
    nil)
   ([event-v] (dispatch app-db event-v)))

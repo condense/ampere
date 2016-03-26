@@ -55,9 +55,17 @@
     (utils/set-logger-level! logger-level)))
 
 (defn bind-fn
-  "Wrap your async handlers (of DOM, AJAX events) in `bind-fn` to preserve `app-db` context"
+  "Wrap your async handlers (of DOM, AJAX events) in `bind-fn` to preserve `app-db` and `*provenance*` context"
   [f]
-  (let [db app-db]
+  (let [db app-db
+        prov router/*provenance*]
     (fn [& args]
-      (binding [app-db db]
+      (binding [app-db db
+                router/*provenance* prov]
         (apply f args)))))
+
+(defn callback
+  "Return a callback fn which will dispatch event-v with any callback args appended."
+  [event-v]
+  (bind-fn (fn [& args]
+             (dispatch (into event-v args)))))
