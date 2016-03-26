@@ -27,16 +27,13 @@
     (add-watch rx (get-id c) #(om/refresh! c))
     rx))
 
-(defn unsub* [c rx]
+(defn unsub [c rx]
   (remove-watch rx (get-id c)))
 
-(defn unsub
-  "Stop watching subscription `v` and try to GC its instance (if no other watchers left)."
-  [c v]
-  (let [k (get-key v)]
-    (when-let [rx (om/get-state c [::rx k])]
-      (om/update-state-nr! c ::rx #(dissoc % k))
-      (unsub* c rx))))
+(defn unsub-all [c]
+  (doseq [rx (vals (om/get-state c ::rx))]
+    (unsub c rx))
+  (om/set-state-nr! c ::rx {}))
 
 (defn observe
   "Used by Wrapper to subscribe to [:opts :subs] and could be directly called by component in render.
@@ -62,13 +59,18 @@
   (om/specify-state-methods!
    (clj->js
     (-> om/pure-methods
+        (update :render
+                (fn [f]
+                  (fn [& args]
+                    (this-as this
+                      (unsub-all this)
+                      (.apply f this (into-array args))))))
         (update :componentWillUnmount
                 (fn [f]
                   (fn []
                     (this-as this
-                             (doseq [rx (vals (om/get-state this ::rx))]
-                               (unsub* this rx))
-                             (.call f this)))))
+                      (unsub-all this)
+                      (.call f this)))))
         (wrap-lifecycles [:shouldComponentUpdate
                           :componentWillMount :componentDidMount
                           :componentWillUpdate :componentDidUpdate
@@ -78,35 +80,14 @@
 
 (defn- Wrapper
   "Wrapper component that tracks subscriptions and rerender `f` wrappee on their update with their values merged into cursor.
-   E. g. `{:opts {:subs {:x [:sub-id1 params] :y [:sub-id2 params}}}` will inject `{:x @x-subscription :y @y-subscription}` into `f` props.
-   REVIEW Possibly greatly simplify subs management by unsubscribing on render start and subscrubing each observe call."
+   E. g. `{:opts {:subs {:x [:sub-id1 params] :y [:sub-id2 params}}}` will inject `{:x @x-subscription :y @y-subscription}` into `f` props."
   [props owner]
   (reify
     om/IDisplayName
     (display-name [_] "Ampere Om Wrapper")
-    om/IWillReceiveProps
-    (will-receive-props [_ next-props]
-      (let [{:keys [db subs]} (om/get-props owner)
-            next-subs (:subs next-props)]
-        (binding [app-db db]
-          (cond
-            (not= db (:db next-props))
-            (doseq [v subs] (unsub owner v))
-
-            (not= subs next-subs)
-            (cond
-              (vector? subs) (unsub owner subs)
-              (vector? next-subs) (doseq [v subs] (unsub owner v))
-              :else
-              (let [s1 (-> subs vals set)
-                    s2 (-> next-subs vals set)
-                    garbage (clojure.set/difference s1 s2)]
-                (doseq [v garbage]
-                  (unsub owner v))))
-
-            :else nil))))
     om/IRender
     (render [_]
+      (unsub-all owner)
       (let [{:keys [f cursor m subs]} props
             rx (cond (vector? subs) (observe owner subs)
                      (map? subs) (utils/map-vals (partial observe owner) subs)
