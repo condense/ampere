@@ -78,7 +78,8 @@
 
 (defn- Wrapper
   "Wrapper component that tracks subscriptions and rerender `f` wrappee on their update with their values merged into cursor.
-   E. g. `{:opts {:subs {:x [:sub-id1 params] :y [:sub-id2 params}}}` will inject `{:x @x-subscription :y @y-subscription}` into `f` props."
+   E. g. `{:opts {:subs {:x [:sub-id1 params] :y [:sub-id2 params}}}` will inject `{:x @x-subscription :y @y-subscription}` into `f` props.
+   REVIEW Possibly greatly simplify subs management by unsubscribing on render start and subscrubing each observe call."
   [props owner]
   (reify
     om/IDisplayName
