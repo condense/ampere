@@ -16,6 +16,7 @@
 (def ^:dynamic *rx* nil)                                    ; current parent expression
 (def ^:dynamic *rank* nil)                                  ; highest rank met during expression compute
 (def ^:dynamic *queue* nil)                                 ; dirty sinks
+(def ^:dynamic *provenance* [])
 
 (defn compare-by [keyfn]
   (fn [x y]
@@ -82,7 +83,8 @@
     (let [old-value state
           r (volatile! 0)
           new-value (binding [*rx* this
-                              *rank* r]
+                              *rank* r
+                              *provenance* (conj *provenance* this)]
                       (getter))]
       (set! rank (inc @r))
       (when (not= old-value new-value)

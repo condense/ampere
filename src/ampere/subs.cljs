@@ -46,22 +46,33 @@
             (f rx)))
     rx))
 
+(defn make-sub [handler-fn v]
+  (let [sub (handler-fn app-db v)]
+    (alter-meta! sub assoc ::subscription v)
+    sub))
+
 (defn subscribe
   "Returns a reaction which observes a part of app-db."
   ([v]
-   (let [key-v (first-in-vector v)
+   (let [key-v      (first-in-vector v)
          handler-fn (get @key->fn key-v path-handler)
-         cache-key [app-db v]]
+         cache-key  [app-db v]]
      (if *cache?*
        (if-let [sub (get-in @cache cache-key)]
          sub
-         (let [sub (inject-teardown (handler-fn app-db v) #(swap! cache when-contains (cache-key 0) update dissoc (cache-key 1)))]
+         (let [sub (inject-teardown (make-sub handler-fn v)
+                                    #(swap! cache
+                                            when-contains (cache-key 0)
+                                            update dissoc (cache-key 1)))]
            (swap! cache assoc-in cache-key sub)
            sub))
-       (handler-fn app-db v))))
+       (make-sub handler-fn v))))
   ([db v] (binding [app-db db] (subscribe v))))
 
 (defn sample [db v]
   "Sample subscription against immutable db value."
   (binding [*cache?* false]
     @(subscribe (rx/atom db) v)))
+
+(defn trace []
+  (keep (comp ::subscription meta) rx/*provenance*))

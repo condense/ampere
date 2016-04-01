@@ -5,7 +5,8 @@
             [ampere.router :as router]
             [ampere.utils :as utils]
             [ampere.middleware :as middleware]
-            [ampere.db :refer [app-db]]))
+            [ampere.db :refer [app-db]]
+            [freactive.core :as rx]))
 
 (def dispatch router/dispatch)
 (def dispatch-sync router/dispatch-sync)
@@ -58,10 +59,12 @@
   "Wrap your async handlers (of DOM, AJAX events) in `bind-fn` to preserve `app-db` and `*provenance*` context"
   [f]
   (let [db app-db
-        prov router/*provenance*]
+        router-prov router/*provenance*
+        rx-prov rx/*provenance*]
     (fn [& args]
       (binding [app-db db
-                router/*provenance* prov]
+                router/*provenance* router-prov
+                rx/*provenance* rx-prov]
         (apply f args)))))
 
 (defn callback
