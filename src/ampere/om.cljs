@@ -63,7 +63,7 @@
                 (fn [f]
                   (fn [& args]
                     (this-as this
-                      (unsub-all this)
+                      ;(unsub-all this)
                       (.apply f this (into-array args))))))
         (update :componentWillUnmount
                 (fn [f]
