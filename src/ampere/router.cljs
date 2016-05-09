@@ -10,6 +10,10 @@
   #(warn "ampere.router/*flush-dom* is not set, may be you forgot to init view adapter?"))
 
 (def ^:dynamic *provenance* [])
+(def ^:dynamic *error-handler*
+  "Set it to the function to be called when exception is thrown during event processing. Function should accept two args: exception itself and event queue.
+  Event queue is then cleared, but you can recover it from your event handler if you want."
+  nil)
 
 ;; -- Router Loop ------------------------------------------------------------
 ;;
@@ -105,8 +109,11 @@
 
   (-exception
     [_ ex]
-    (set! queue #queue [])     ;; purge the queue
-    (throw ex))
+    (let [q queue]
+      (set! queue #queue [])                                ;; purge the queue
+      (if *error-handler*
+        (*error-handler* ex q)
+        (throw ex))))
 
   ;; Process all the events currently in the queue, but not any new ones.
   ;; Be aware that events might have metadata which will pause processing.
