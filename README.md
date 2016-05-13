@@ -15,7 +15,7 @@ And... if Om, why not any another View library? You can use Ampere with Om, Reag
 ## Usage
 
 ```
-[condense/ampere "0.3.1"]
+[condense/ampere "0.3.4"]
 ```
 
 See [re-frame's README][1] for general architecture use, [freactive.core's README][4] for deriving data with its tools.
