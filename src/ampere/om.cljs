@@ -1,5 +1,6 @@
 (ns ampere.om
   "Om-specific API"
+  (:require-macros [freactive.macros :as fr])
   (:require [om.core :as om :include-macros true]
             [ampere.core :refer [subscribe]]
             [ampere.db :refer [app-db]]
@@ -63,8 +64,9 @@
                 (fn [f]
                   (fn [& args]
                     (this-as this
-                      ;(unsub-all this)
-                      (.apply f this (into-array args))))))
+                      (fr/dosync
+                        (unsub-all this)
+                        (.apply f this (into-array args)))))))
         (update :componentWillUnmount
                 (fn [f]
                   (fn []

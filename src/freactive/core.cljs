@@ -9,13 +9,14 @@
 
 (defprotocol IReactiveExpression
   (compute [_])
-  (clean [_])
+  (gc [_])
   (add-source [_ source])
   (remove-source [_ source]))
 
 (def ^:dynamic *rx* nil)                                    ; current parent expression
 (def ^:dynamic *rank* nil)                                  ; highest rank met during expression compute
-(def ^:dynamic *queue* nil)                                 ; dirty sinks
+(def ^:dynamic *dirty-sinks* nil)                           ; subject to `compute`
+(def ^:dynamic *dirty-sources* nil)                         ; subject to `gc`
 (def ^:dynamic *provenance* [])
 
 (defn compare-by [keyfn]
@@ -27,7 +28,9 @@
 
 (def empty-queue (sorted-set-by (compare-by rank-hash)))
 
-(defn propagate* [queue]
+(defn propagate*
+  "Recursively compute all dirty sinks in the `queue` and return all visited sources to clean."
+  [queue]
   (binding [*rx* nil *rank* nil]                            ; try to be foolproof
     (loop [queue queue dirty '()]
       (if-let [x (first queue)]
@@ -38,9 +41,19 @@
             (recur (into queue (get-sinks x)) dirty)))
         dirty))))
 
-(defn propagate! [queue]
-  (doseq [sink (propagate* queue)]
-    (clean sink)))
+(defn clean
+  "Recursively garbage collect all disconnected sources in the `queue`"
+  [queue]
+  (doseq [source queue]
+    (gc source)))
+
+(defn propagate
+  "Recursively compute all dirty sources in the `queue` and clean visited sources."
+  [queue]
+  (let [dirty (propagate* queue)]
+    (if *dirty-sources*
+      (vswap! *dirty-sources* into dirty)
+      (clean dirty))))
 
 (defn register [source]
   (when *rx*                                                ; *rank* too
@@ -49,9 +62,16 @@
     (vswap! *rank* max (get-rank source))))
 
 (defn dosync* [f]
-  (let [queue (or *queue* (volatile! empty-queue))]
-    (binding [*queue* queue] (f))
-    (propagate! @queue)))
+  (let [sinks (or *dirty-sinks* (volatile! empty-queue))
+        sources (or *dirty-sources* (volatile! empty-queue))
+        result (binding [*dirty-sinks* sinks
+                         *dirty-sources* sources]
+                 (f))]
+    (binding [*dirty-sources* sources]
+      (propagate @sinks))
+    (when-not *dirty-sources*
+      (clean @sources))
+    result))
 
 (deftype ReactiveExpression [getter setter teardown meta validator
                              ^:mutable state ^:mutable watches
@@ -91,15 +111,17 @@
         (set! state new-value)
         (-notify-watches this old-value new-value))
       new-value))
-  (clean [this]
-    (when (and (empty? sinks) (empty? watches))
-      (doseq [source sources]
-        (remove-sink source this)
-        (when (satisfies? IReactiveExpression source)
-          (clean source)))
-      (set! sources #{})
-      (set! state ::thunk)
-      (when teardown (teardown))))
+  (gc [this]
+    (if *dirty-sources*
+      (vswap! *dirty-sources* conj this)
+      (when (and (empty? sinks) (empty? watches))
+        (doseq [source sources]
+          (remove-sink source this)
+          (when (satisfies? IReactiveExpression source)
+            (gc source)))
+        (set! sources #{})
+        (set! state ::thunk)
+        (when teardown (teardown)))))
   (add-source [_ source]
     (set! sources (conj sources source)))
   (remove-source [_ source]
@@ -118,7 +140,7 @@
     this)
   (-remove-watch [this key]
     (set! watches (dissoc watches key))
-    (clean this)
+    (gc this)
     this)
 
   IHash
@@ -154,9 +176,9 @@
 
 (defn watch [_ source o n]
   (when (not= o n)
-    (if *queue*
-      (vswap! *queue* into (get-sinks source))
-      (->> source get-sinks (into empty-queue) propagate!))))
+    (if *dirty-sinks*
+      (vswap! *dirty-sinks* into (get-sinks source))
+      (->> source get-sinks (into empty-queue) propagate))))
 
 (defn atom [x & m]
   (let [sinks (volatile! #{})]
