@@ -1,11 +1,24 @@
 (ns ampere.middleware
   (:require
-    [freactive.core :refer [IReactiveSource]]
-    [ampere.undo :refer [store-now!]]
-    [ampere.utils :refer [warn info fine error]]
-    [clojure.data :as data]))
+   [freactive.core :refer [IReactiveSource]]
+   [ampere.undo :refer [store-now!]]
+   [ampere.utils :refer [warn info fine error]]
+   [clojure.data :as data]))
 
 ;;; See docs in the [Wiki](https://github.com/Day8/re-frame/wiki)
+
+(defn with-try-catch
+  "Wraps pure handler in a try catch to provide context with any exceptions."
+  [handler db event-vec]
+  (try
+    (handler db event-vec)
+    (catch :default e
+      (throw (ex-info (str "Handler for " (first event-vec) " threw exception")
+                      {:event-id (first event-vec)
+                       :handler handler
+                       :db db
+                       :event-vec event-vec}
+                      e)))))
 
 (defn pure
   "Acts as an adaptor, allowing handlers to be writen as pure functions.
@@ -21,19 +34,13 @@
   (fn pure-handler
     [app-db event-vec]
     (if (satisfies? IReactiveSource app-db)
-      (let [db @app-db]
-        (try
-          (let [new-db (handler db event-vec)]
-            (if (nil? new-db)
-              (error "ampere: your pure handler returned nil. It should return the new db state.")
-              (when-not (identical? db new-db)
-                (reset! app-db new-db))))                   ; turn this into a noop handler
-          (catch :default ex
-            ; This gives us useful details to replay the handler with the same inputs to
-            ; explore the nature of the exception.
-            (throw (ex-info (str "Pure handler for " (first event-vec) " threw exception")
-                            {:db db :event-v event-vec :handler handler :ex ex}
-                            ex)))))
+      (let []
+        (let [db @app-db
+              new-db (with-try-catch handler db event-vec)]
+          (if (nil? new-db)
+            (error "ampere: your pure handler returned nil. It should return the new db state.")
+            (when-not (identical? db new-db)
+              (reset! app-db new-db)))))
       (do
         (if (map? app-db)
           (warn "ampere: Looks like \"pure\" is in the middleware pipeline twice. Ignoring.")
