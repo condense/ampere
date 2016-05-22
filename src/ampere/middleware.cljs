@@ -39,7 +39,7 @@
         (if (nil? new-db)
           (error "ampere: your pure handler returned nil. It should return the new db state.")
           (when-not (identical? db new-db)
-            (reset! app-db new-db))))
+            (reset! app-db new-db))))                       ; turn this into a noop handler
       (do
         (if (map? app-db)
           (warn "ampere: Looks like \"pure\" is in the middleware pipeline twice. Ignoring.")
