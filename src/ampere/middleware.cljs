@@ -34,13 +34,12 @@
   (fn pure-handler
     [app-db event-vec]
     (if (satisfies? IReactiveSource app-db)
-      (let []
-        (let [db @app-db
-              new-db (with-try-catch handler db event-vec)]
-          (if (nil? new-db)
-            (error "ampere: your pure handler returned nil. It should return the new db state.")
-            (when-not (identical? db new-db)
-              (reset! app-db new-db)))))
+      (let [db @app-db
+            new-db (with-try-catch handler db event-vec)]
+        (if (nil? new-db)
+          (error "ampere: your pure handler returned nil. It should return the new db state.")
+          (when-not (identical? db new-db)
+            (reset! app-db new-db))))
       (do
         (if (map? app-db)
           (warn "ampere: Looks like \"pure\" is in the middleware pipeline twice. Ignoring.")
