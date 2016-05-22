@@ -155,5 +155,5 @@
     (fn after-handler
       [db v]
       (let [new-db (handler db v)]
-        (f new-db v)                                     ; call f for side effects
+        (f new-db v)                                   ; call f for side effects
         new-db))))
