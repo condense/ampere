@@ -1,9 +1,9 @@
 (ns ampere.middleware
   (:require
-   [freactive.core :refer [IReactiveSource]]
-   [ampere.undo :refer [store-now!]]
-   [ampere.utils :refer [warn info fine error]]
-   [clojure.data :as data]))
+    [freactive.core :refer [IReactiveSource]]
+    [ampere.undo :refer [store-now!]]
+    [ampere.utils :refer [warn info fine error]]
+    [clojure.data :as data]))
 
 ;;; See docs in the [Wiki](https://github.com/Day8/re-frame/wiki)
 
@@ -21,12 +21,19 @@
   (fn pure-handler
     [app-db event-vec]
     (if (satisfies? IReactiveSource app-db)
-      (let [db @app-db
-            new-db (handler db event-vec)]
-        (if (nil? new-db)
-          (error "ampere: your pure handler returned nil. It should return the new db state.")
-          (when-not (identical? db new-db)
-            (reset! app-db new-db))))                       ; turn this into a noop handler
+      (let [db @app-db]
+        (try
+          (let [new-db (handler db event-vec)]
+            (if (nil? new-db)
+              (error "ampere: your pure handler returned nil. It should return the new db state.")
+              (when-not (identical? db new-db)
+                (reset! app-db new-db))))                   ; turn this into a noop handler
+          (catch :default ex
+            ; This gives us useful details to replay the handler with the same inputs to
+            ; explore the nature of the exception.
+            (throw (ex-info (str "Pure handler for " (first event-vec) " threw exception")
+                            {:db db :event-v event-vec :handler handler :ex ex}
+                            ex)))))
       (do
         (if (map? app-db)
           (warn "ampere: Looks like \"pure\" is in the middleware pipeline twice. Ignoring.")
@@ -141,5 +148,5 @@
     (fn after-handler
       [db v]
       (let [new-db (handler db v)]
-        (f new-db v)                                   ; call f for side effects
+        (f new-db v)                                        ; call f for side effects
         new-db))))
