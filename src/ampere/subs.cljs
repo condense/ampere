@@ -1,6 +1,5 @@
 (ns ampere.subs
-  (:require-macros [freactive.macros :refer [rx]])
-  (:require [freactive.core :as rx]
+  (:require [carbon.rx :as rx :include-macros true]
             [ampere.db :refer [app-db]]
             [ampere.utils :refer [first-in-vector warn error]]))
 
@@ -36,11 +35,11 @@
   (swap! key->fn assoc key-v handler-fn))
 
 (defn path-handler [db v]
-  (rx (get-in @db v)))
+  (rx/rx (get-in @db v)))
 
 (defn inject-teardown [rx f]
-  (let [g (.-teardown rx)]
-    (set! (.-teardown rx)
+  (let [g (.-drop rx)]
+    (set! (.-drop rx)
           (fn [rx]
             (when g (g rx))
             (f rx)))
@@ -72,7 +71,7 @@
 (defn sample [db v]
   "Sample subscription against immutable db value."
   (binding [*cache?* false]
-    @(subscribe (rx/atom db) v)))
+    @(subscribe (rx/$ db) v)))
 
 (defn trace []
   (keep (comp ::subscription meta) rx/*provenance*))

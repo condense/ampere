@@ -1,4 +1,5 @@
 (ns freactive.macros
+  "DEPRECATED use carbon.rx instead"
   (:refer-clojure :exclude [dosync]))
 
 (defmacro rx [& body]

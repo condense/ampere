@@ -6,7 +6,7 @@
             [ampere.utils :as utils]
             [ampere.middleware :as middleware]
             [ampere.db :refer [app-db]]
-            [freactive.core :as rx]))
+            [carbon.rx :as rx]))
 
 (def dispatch router/dispatch)
 (def dispatch-sync router/dispatch-sync)

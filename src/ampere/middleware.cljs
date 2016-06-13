@@ -1,6 +1,6 @@
 (ns ampere.middleware
   (:require
-   [freactive.core :refer [IReactiveSource]]
+   [carbon.rx :refer [IReactiveSource]]
    [ampere.undo :refer [store-now!]]
    [ampere.utils :refer [warn info fine error]]
    [clojure.data :as data]))

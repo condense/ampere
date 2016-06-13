@@ -1,7 +1,6 @@
 (ns ampere.undo
   (:refer-clojure :exclude [dosync])
-  (:require-macros [freactive.macros :refer [rx]])
-  (:require [freactive.core :as r]
+  (:require [carbon.rx :as rx :include-macros true]
             [ampere.utils :refer [warn]]
             [ampere.db :refer [app-db]]
             [ampere.handlers :as handlers]))
@@ -11,10 +10,10 @@
 (def ^:private max-undos "Maximum number of undo states maintained." (atom 50))
 (defn set-max-undos! [n] (reset! max-undos n))
 
-(def ^:private undo-list "A list of history states." (r/atom (list)))
+(def ^:private undo-list "A list of history states." (rx/$ (list)))
 (def ^:private redo-list
   "A list of future states, caused by undoing."
-  (r/atom (list)))
+  (rx/$ (list)))
 
 (defn- clear-undos! [] (reset! undo-list (list)))
 (defn- clear-redos! [] (reset! redo-list (list)))
@@ -30,12 +29,12 @@
   (swap! undo-list #(take @max-undos (conj % {:db          @app-db
                                               :explanation explanation}))))
 
-(def undos? (rx (pos? (count @undo-list))))
-(def redos? (rx (pos? (count @redo-list))))
+(def undos? (rx/rx (pos? (count @undo-list))))
+(def redos? (rx/rx (pos? (count @redo-list))))
 
 (def undo-explanations
   "List of undo descriptions."
-  (rx (map :explanation @undo-list)))
+  (rx/rx (map :explanation @undo-list)))
 
 ;;; ## Event handlers
 

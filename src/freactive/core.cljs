@@ -1,4 +1,5 @@
 (ns freactive.core
+  "DEPRECATED use carbon.rx instead"
   (:refer-clojure :exclude [atom]))
 
 (defprotocol IReactiveSource
