@@ -1,6 +1,6 @@
 (ns ampere.db
   "Application State"
-  (:require [carbon.rx :refer [$]]))
+  (:require [carbon.rx :refer-macros [$]]))
 
 (def ^:dynamic app-db
   "Should not be referenced directly by application code.

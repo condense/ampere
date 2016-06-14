@@ -16,7 +16,7 @@
   (rx (vals (:todos @db))))
 
 (defn showing [db _]
-  (cursor db :showing))
+  (cursor db [:showing]))
 
 ;; FIXME demonstrate how to use static subs to reduce boilerplate and improve perf
 (defn visible-todos [db _]
