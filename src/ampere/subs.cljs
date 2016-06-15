@@ -35,15 +35,8 @@
   (swap! key->fn assoc key-v handler-fn))
 
 (defn path-handler [db v]
-  (rx/rx (get-in @db v)))
-
-(defn inject-teardown [rx f]
-  (let [g (.-drop rx)]
-    (set! (.-drop rx)
-          (fn [rx]
-            (when g (g rx))
-            (f rx)))
-    rx))
+  (warn "ampere: " v " sub is not registered, treating as a cursor path")
+  (rx/cursor db v))
 
 (defn make-sub [handler-fn v]
   (let [sub (handler-fn app-db v)]
@@ -59,10 +52,11 @@
      (if *cache?*
        (if-let [sub (get-in @cache cache-key)]
          sub
-         (let [sub (inject-teardown (make-sub handler-fn v)
-                                    #(swap! cache
-                                            when-contains (cache-key 0)
-                                            update dissoc (cache-key 1)))]
+         (let [sub (rx/add-drop (make-sub handler-fn v)
+                                ::cache
+                                #(swap! cache
+                                        when-contains (cache-key 0)
+                                        update dissoc (cache-key 1)))]
            (swap! cache assoc-in cache-key sub)
            sub))
        (make-sub handler-fn v))))
