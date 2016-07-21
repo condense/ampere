@@ -76,7 +76,8 @@
         (wrap-lifecycles [:shouldComponentUpdate
                           :componentWillMount :componentDidMount
                           :componentWillUpdate :componentDidUpdate
-                          :componentWillReceiveProps :render])))))
+                          :componentWillReceiveProps :render
+                          :componentWillUnmount])))))
 
 (def mergeable? (some-fn nil? map?))
 

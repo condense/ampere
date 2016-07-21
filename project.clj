@@ -1,4 +1,4 @@
-(defproject condense/ampere "0.4.0"
+(defproject condense/ampere "0.4.1"
   :description "Ampere: UniDirectional Flow for VDOM."
   :url "https://github.com/condense/ampere"
   :license {:name "Eclipse Public License"
@@ -8,7 +8,7 @@
                  [org.clojure/clojurescript "1.9.93" :scope "provided"]
                  [org.omcljs/om "0.9.0" :scope "provided"]
                  [reagent "0.5.1" :scope "provided"]
-                 [carbon/rx "0.1.9"]]
+                 [carbon/rx "0.1.10"]]
 
   :profiles {:debug {:debug true}
              :dev   {:dependencies [[karma-reporter "1.0.1"]]
