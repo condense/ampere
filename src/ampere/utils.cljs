@@ -6,7 +6,7 @@
 
 
 (defonce *logger*
-  (when ^boolean goog.DEBUG
+  (when ^boolean js/goog.DEBUG
     (.setCapturing (Console.) true)
     (glog/getLogger "ampere")))
 
