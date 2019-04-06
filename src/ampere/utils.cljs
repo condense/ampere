@@ -5,7 +5,7 @@
   (:import [goog.debug Console]))
 
 
-(defonce *logger*
+(defonce logger
   (when ^boolean js/goog.DEBUG
     (.setCapturing (Console.) true)
     (glog/getLogger "ampere")))
@@ -18,10 +18,10 @@
 ;;; them somewhere. To do that, you might want to override the way that exceptions are
 ;;; handled by overridding "error"
 (def default-loggers
-  {:fine     #(glog/fine *logger* %)
-   :info     #(glog/info *logger* %)
-   :warn     #(glog/warning *logger* %)
-   :error    #(glog/error *logger* %) })
+  {:fine     #(glog/fine logger %)
+   :info     #(glog/info logger %)
+   :warn     #(glog/warning logger %)
+   :error    #(glog/error logger %) })
 
 (def loggers
   "Holds the current set of loggers."
@@ -35,8 +35,8 @@
   (swap! loggers merge new-loggers))
 
 (defn set-logger-level! [level]
-  (when *logger*
-    (.setLevel *logger*
+  (when logger
+    (.setLevel logger
                (case level
                  :fine lvl/FINE
                  :info lvl/INFO
